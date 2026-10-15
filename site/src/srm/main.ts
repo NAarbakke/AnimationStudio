@@ -1,4 +1,4 @@
-// Solid rocket motor lab. Geometry comes from a preset or from public/models/srm.glb; either way the grain is
+// Solid rocket motor lab. Geometry comes from a preset or from site/public/models/srm.glb; either way the grain is
 // voxelised in a worker, burn-back is a distance field, and ballistics + visuals are derived from that.
 import * as THREE from 'three';
 import { createStage, lin } from '../shared/stage';
@@ -294,7 +294,7 @@ function resim(resetTime = false) {
 function seg(id: string, attr: string, cur: string) { document.querySelectorAll(`#${id} button`).forEach(b => b.setAttribute('aria-checked', String((b as HTMLElement).dataset[attr] === cur))); }
 function setGrain(g: GrainKey) {
   S.grain = g; seg('grains', 'g', g);
-  $('grainNote').textContent = g === 'cad' ? 'Your model from public/models/srm.glb. Burn-back, pressure, thrust and the visuals are all computed from its grain and nozzle geometry.' : GRAINS[g].note;
+  $('grainNote').textContent = g === 'cad' ? 'Your model from site/public/models/srm.glb. Burn-back, pressure, thrust and the visuals are all computed from its grain and nozzle geometry.' : GRAINS[g].note;
   rebuild();
 }
 function setProp(k: string) { S.prop = k; P = PROPS[k]; seg('props', 'p', k); $('propNote').textContent = P.note; if (volume) volume.uniforms.uAlb.value.copy(lin(P.color)); resim(true); }
@@ -388,7 +388,7 @@ const G0kg = 9.80665;
 function renderCadBox() {
   const ok = cad && !cadError;
   $('cadBox').innerHTML = (ok
-    ? `<b>Loaded</b> <code>public/models/srm.glb</code>, ${cad!.parts.length} meshes, at ${cadStamp}.<br>Throat ${f1(cad!.geom.rt * 2000)} mm, exit ${f1(cad!.geom.re * 2000)} mm, grain ${f0((cad!.bounds[4] - cad!.bounds[1]) * 1000)} mm long.<br>`
+    ? `<b>Loaded</b> <code>site/public/models/srm.glb</code>, ${cad!.parts.length} meshes, at ${cadStamp}.<br>Throat ${f1(cad!.geom.rt * 2000)} mm, exit ${f1(cad!.geom.re * 2000)} mm, grain ${f0((cad!.bounds[4] - cad!.bounds[1]) * 1000)} mm long.<br>`
     : cadError ? `<span class="warn">${cadError}</span><br>` : '')
     + `Edit <code>cad/srm.py</code> (build123d) and run <code>npm run cad:watch</code>. Every save re-exports the GLB and this page reloads it in place. Or drop in your own GLB with parts named <code>grain…</code> and <code>nozzle…</code> (plus optional <code>case…</code>, <code>insulation…</code>, <code>igniter…</code>). Units and axis are detected automatically.`;
 }
@@ -528,7 +528,7 @@ $('tMin').addEventListener('click', () => {
 });
 
 // =====================================================================
-// CAD hot reload: vite's model-watch plugin pings us when public/models changes
+// CAD hot reload: vite's model-watch plugin pings us when site/public/models changes
 // =====================================================================
 if (import.meta.hot) {
   import.meta.hot.on('model-changed', (d: { file: string }) => {
@@ -614,6 +614,11 @@ function film() {
   const ready = new Promise<void>(ok => { const wait = () => (sim ? ok() : setTimeout(wait, 50)); wait(); });
   (window as any).__film = {
     ready,
+    get sim() { return sim; }, // read by video/manim/export.js for the solid-motor insert
+    get prop() { return P; },
+    get res() { return res; },
+    get geom() { return geom; },
+    motor: MOTOR,
     seek(t: number) {
       if (t < ft) { ft = 0; time = 0; play.t = 0; play.playing = play.started = false; shot(); }
       while (ft < t - 1e-6) {

@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Burevestnik ConOps</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Saira+Condensed:wght@400;600;700&display=swap">
+<style>
+  :root {
+    color-scheme: dark;
+    --ink: #EAF0F7;
+    --dim: #CBD5E1;
+    --line: rgba(234, 240, 247, .26);
+    --amber: #FFB35C;
+    --violet: #C8A6FF;
+    --glass: rgba(5, 8, 14, .42);
+    --mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+    --cond: 'Saira Condensed', 'Arial Narrow', 'Roboto Condensed', sans-serif;
+  }
+  html, body { height: 100%; margin: 0; background: #020306; color: var(--ink); overflow: hidden; }
+  #c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  #err[hidden] { display: none; }
+  #err { position: fixed; inset: 0; display: grid; place-items: center; padding-inline: 24px; text-align: center; font-family: var(--mono); color: var(--dim); }
+  .hud {
+    position: fixed; inset: 0; pointer-events: none; padding: 26px 30px 24px;
+    display: flex; flex-direction: column; justify-content: space-between;
+    font-family: var(--mono); font-size: 13px; text-shadow: 0 2px 5px #000;
+    background: linear-gradient(to bottom, rgba(2,6,12,.88), rgba(2,6,12,0) 15%, rgba(2,6,12,0) 76%, rgba(2,6,12,.92));
+  }
+  .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+  .eyebrow { font-family: var(--cond); font-weight: 600; font-size: 13px; letter-spacing: .24em; text-transform: uppercase; color: var(--dim); }
+  .mission h1 { margin: 2px 0 0; font-family: var(--cond); font-weight: 700; font-size: 30px; letter-spacing: .07em; text-transform: uppercase; line-height: 1; }
+  .phase { text-align: right; display: grid; gap: 4px; justify-items: end; }
+  .phase b { font-family: var(--cond); font-weight: 600; font-size: 24px; letter-spacing: .1em; text-transform: uppercase; color: var(--amber); }
+  .phase span { color: var(--dim); font-size: 12px; }
+  .caption {
+    position: fixed; left: 50%; top: 15%; transform: translateX(-50%); width: min(1100px, calc(100vw - 96px));
+    box-sizing: border-box; padding: 15px 24px 18px; background: rgba(3,8,16,.88); border-top: 2px solid var(--amber); border-radius: 3px;
+    font-family: var(--cond); font-weight: 600; font-size: 32px; letter-spacing: .18em; text-transform: uppercase; text-align: center; opacity: 0;
+  }
+  .caption small { display: block; margin-top: 8px; font-family: var(--mono); font-weight: 400; font-size: 15px; line-height: 1.55; letter-spacing: .02em; text-transform: none; color: #E2E8F0; }
+  .bottom { display: grid; gap: 16px; }
+  .timeline { position: relative; height: 48px; margin: 0 10px; }
+  .track { position: absolute; left: 0; right: 0; top: 23px; height: 2px; background: var(--line); }
+  .fill { position: absolute; left: 0; top: 23px; height: 2px; background: var(--ink); width: 0; }
+  .tick { position: absolute; top: 17px; width: 14px; height: 14px; margin-left: -7px; }
+  .tick::before { content: ''; position: absolute; inset: 3px; border-radius: 50%; border: 1.5px solid var(--ink); background: #05080e; }
+  .tick.done::before { background: var(--ink); }
+  .tick span { position: absolute; left: 50%; transform: translateX(-50%); font-family: var(--cond); font-weight: 600; font-size: 12px; letter-spacing: .16em; white-space: nowrap; color: var(--dim); text-transform: uppercase; }
+  .tick:nth-child(odd) span { bottom: 16px; }
+  .tick:nth-child(even) span { top: 16px; }
+  .tick.done span { color: var(--ink); }
+  .row { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(180px, .65fr); align-items: end; gap: 24px; }
+  .tele { display: flex; gap: 26px; }
+  .g { display: grid; gap: 3px; min-width: 100px; }
+  .g label { font-family: var(--cond); font-weight: 600; font-size: 12px; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); }
+  .g b { font-weight: 500; font-size: 22px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .g b small { font-size: 12px; color: var(--dim); font-weight: 400; margin-left: 4px; }
+  .g.wide b { font-family: var(--cond); font-weight: 600; font-size: 20px; letter-spacing: .08em; }
+  .bar { height: 2px; background: var(--line); }
+  .bar i { display: block; height: 100%; width: 0; background: var(--amber); }
+  .clock { text-align: center; }
+  .clock .eyebrow { display: block; }
+  .clock b { font-weight: 500; font-size: 40px; letter-spacing: .04em; font-variant-numeric: tabular-nums; }
+  .warp { text-align: right; align-self: end; color: var(--dim); font-size: 12px; }
+  .warp b { display: block; font-family: var(--cond); font-weight: 600; font-size: 22px; letter-spacing: .08em; color: var(--amber); font-variant-numeric: tabular-nums; }
+  .src { margin-top: 6px; }
+
+  /* cutaway callouts */
+  #lines { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  #lines line { stroke: rgba(234, 240, 247, .95); stroke-width: 1.5; filter: drop-shadow(0 1px 2px #000); }
+  #lines circle { fill: var(--ink); }
+  .lbl { position: fixed; left: 0; top: 0; box-sizing: border-box; width: min(220px, 17vw); padding: 9px 12px; background: rgba(3,8,16,.9); border-left: 2px solid var(--amber); border-radius: 2px; font-family: var(--cond); font-weight: 600; font-size: clamp(13px, 1.1vw, 19px); letter-spacing: .08em; text-transform: uppercase; white-space: normal; text-shadow: 0 1px 3px #000; pointer-events: none; opacity: 0; }
+  .lbl small { display: block; margin-top: 4px; font-family: var(--mono); font-weight: 400; font-size: clamp(10px, .7vw, 12px); line-height: 1.4; letter-spacing: 0; text-transform: none; color: #D8E0EB; }
+
+  /* title and end cards */
+  .card { position: fixed; inset: 0; display: grid; place-content: center; text-align: center; pointer-events: none; opacity: 0; background: radial-gradient(ellipse at center, rgba(3,5,10,.88), rgba(3,5,10,.55) 75%); }
+  .card .k { font-family: var(--cond); font-weight: 600; font-size: 16px; letter-spacing: .4em; text-transform: uppercase; color: var(--dim); }
+  .card h2 { margin: 10px 0 0; font-family: var(--cond); font-weight: 700; font-size: 84px; letter-spacing: .12em; text-transform: uppercase; line-height: 1; text-shadow: 0 2px 30px rgba(0,0,0,.5); }
+  .card p { margin: 18px auto 0; max-width: 820px; font-family: var(--mono); font-size: 15px; line-height: 1.55; color: #D3DAE4; text-shadow: 0 1px 10px rgba(0,0,0,.7); }
+  .card .rule { width: 120px; height: 2px; background: var(--amber); margin: 18px auto 0; }
+  .card .caveat { max-width: 850px; padding-top: 16px; border-top: 1px solid rgba(234,240,247,.3); font-size: 14px; color: #FFE0B5; }
+  #marker { position: fixed; left: 0; top: 0; width: 34px; height: 34px; margin: -17px 0 0 -17px; border: 1.5px solid var(--amber); border-radius: 50%; opacity: 0; pointer-events: none; }
+  #marker span { position: absolute; left: 44px; top: 7px; font-family: var(--cond); font-weight: 600; font-size: 14px; letter-spacing: .18em; color: var(--amber); white-space: nowrap; text-transform: uppercase; }
+</style>
+
+<canvas id="c" aria-label="3D animation of the notional Burevestnik concept of operations, from canister launch to nuclear cruise"></canvas>
+<div id="err" hidden>WebGL is not available in this browser, so the animation cannot render.</div>
+<svg id="lines" aria-hidden="true"></svg>
+<div id="labels"></div>
+<div id="marker"><span>9M730 · cruise</span></div>
+
+<div class="hud" id="hud">
+  <div class="top">
+    <div class="mission">
+      <span class="eyebrow">9M730 Burevestnik · Notional ConOps</span>
+      <h1>Launch to Nuclear Cruise</h1>
+    </div>
+    <div class="phase">
+      <span class="eyebrow">Phase</span>
+      <b id="phase">Pre-launch</b>
+      <span id="phaseSub">In canister</span>
+    </div>
+  </div>
+
+  <div class="caption" id="cap"></div>
+
+  <div class="bottom">
+    <div class="timeline" id="tl">
+      <div class="track"></div>
+      <div class="fill" id="fill"></div>
+    </div>
+    <div class="row">
+      <div class="tele">
+        <div class="g"><label>Mach</label><b id="mach">0.00</b><div class="bar"><i id="machBar"></i></div></div>
+        <div class="g"><label>Altitude</label><b id="alt">0<small>m</small></b><div class="bar"><i id="altBar"></i></div></div>
+        <div class="g wide"><label>Propulsion</label><b id="prop">In canister</b></div>
+        <div class="g"><label>Reactor</label><b id="pwr">—<small>MWth</small></b><div class="bar"><i id="pwrBar"></i></div></div>
+      </div>
+      <div class="clock"><span class="eyebrow">Mission elapsed</span><b id="clk">T−00:00:16</b></div>
+      <div class="warp"><span class="eyebrow">Playback</span><b id="warp">1×</b><div class="src">After Hecla &amp; Kemp (MIT), Fig. 4</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="card" id="titleCard">
+  <span class="k">A notional concept of operations</span>
+  <h2>Burevestnik</h2>
+  <div class="rule"></div>
+  <p>Canister launch, boost and the change-over to direct-cycle nuclear cruise, as reconstructed from open-source footage in
+    J.&nbsp;J.&nbsp;Hecla &amp; R.&nbsp;S.&nbsp;Kemp, <i>Modeling the Performance of the Burevestnik Nuclear-Powered Cruise Missile</i> (MIT).</p>
+  <p class="caveat">One proposed sequence, not a confirmed operating procedure.<br>The authors note that the twin boosters may instead be used only for testing.</p>
+</div>
+<div class="card" id="endCard">
+  <span class="k">Endurance limited by the reactor, not by fuel</span>
+  <h2>Extended endurance</h2>
+  <div class="rule"></div>
+  <p>9.5 m long · 5.6 m span · ~3,340 kg · Mach ~0.8 · ~4.3 MWth at cruise.<br>
+    Geometry from the paper's photogrammetry (Table 1). Timing, site and visuals are illustrative.<br>
+    Source: Hecla &amp; Kemp, MIT Department of Nuclear Science and Engineering.</p>
+  <p class="caveat">The paper models a possible system from open-source evidence.<br>Booster use and the transition to nuclear power remain uncertain (Fig. 4).</p>
+</div>
+
+<script type="module" src="/src/conops/main.js"></script>

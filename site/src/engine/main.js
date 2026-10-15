@@ -1057,4 +1057,6 @@ if (matchMedia('(max-width: 900px)').matches) $('tMin').click();
 resize();
 goStep(0, true);
 requestAnimationFrame(frame);
+// read by video/manim/export.js for the engine insert: the steady state, the nozzle profile, and the solver at any altitude
+window.__engine = { snapshot: () => ({ S, P, Es, G, prof, AT, PC_NOM, G0, RHO_OX, tp: tpStats(Es) }), solveAt: km => solve(P, S.of, S.thr, S.eps, km) };
 })();

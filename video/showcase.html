@@ -1,6 +1,6 @@
 <!doctype html>
-<!-- HyperFrames composition: cuts the three Playwright-rendered clips in ./clips into one film with titles.
-     `npm run sample` renders the clips (render.js) and then this, to out/showcase.mp4. -->
+<!-- HyperFrames composition: cuts the Playwright-rendered clips in ./clips and the ManimGX equation
+     inserts (manim/engine.py, manim/srm.py) into one film with titles. `npm run sample` renders them all, then this, to out/showcase.mp4. -->
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -24,7 +24,7 @@
     </style>
   </head>
   <body>
-    <div id="root" data-composition-id="main" data-start="0" data-duration="29" data-width="1920" data-height="1080" data-fps="30">
+    <div id="root" data-composition-id="main" data-start="0" data-duration="86" data-width="1920" data-height="1080" data-fps="30">
       <div id="title" class="clip card" data-start="0" data-duration="3" data-track-index="0">
         <p>Kestrel labs</p>
         <h1>How rockets burn</h1>
@@ -36,16 +36,19 @@
       <div id="t1" class="clip tag" data-start="3.6" data-duration="4.5" data-track-index="1"><b>Launch</b><span>Ignition at T-3 s, clamps release at zero</span></div>
 
       <video id="v2" class="clip" src="clips/engine.mp4" data-start="11" data-duration="8" data-track-index="0" muted playsinline></video>
+      <!-- each lab's footage is followed by its equations, made by ManimGX from the lab's own physics -->
+      <video id="m2" class="clip" src="clips/engine-math.mp4" data-start="19" data-duration="28" data-track-index="0" muted playsinline></video>
 
-      <video id="v3" class="clip" src="clips/srm.mp4" data-start="19" data-duration="8" data-media-start="0.5" data-track-index="0" muted playsinline></video>
-      <div id="t3" class="clip tag" data-start="19.6" data-duration="4.5" data-track-index="1"><b>Solid motor</b><span>The grain burns back from the port, and the thrust follows the burning area</span></div>
+      <video id="v3" class="clip" src="clips/srm.mp4" data-start="47" data-duration="8" data-media-start="0.5" data-track-index="0" muted playsinline></video>
+      <div id="t3" class="clip tag" data-start="47.6" data-duration="4.5" data-track-index="1"><b>Solid motor</b><span>The grain burns back from the port, and the thrust follows the burning area</span></div>
+      <video id="m3" class="clip" src="clips/srm-math.mp4" data-start="55" data-duration="29" data-track-index="0" muted playsinline></video>
 
-      <div id="end" class="clip card" data-start="27" data-duration="2" data-track-index="0">
+      <div id="end" class="clip card" data-start="84" data-duration="2" data-track-index="0">
         <p>Kestrel labs</p>
-        <small>Clips: Playwright + ffmpeg · Edit: HyperFrames</small>
+        <small>Clips: Playwright + ffmpeg · Equations: ManimGX · Edit: HyperFrames</small>
       </div>
 
-      <div id="fade" class="clip" data-start="0" data-duration="29" data-track-index="2"></div>
+      <div id="fade" class="clip" data-start="0" data-duration="86" data-track-index="2"></div>
     </div>
     <script>
       const tl = gsap.timeline({ paused: true });
@@ -53,12 +56,12 @@
         .from('#title h1', { opacity: 0, y: 40, duration: 0.7 }, 0.45)
         .from('#title small', { opacity: 0, duration: 0.6 }, 1.0);
       // dip to black across every cut
-      for (const t of [3, 11, 19, 27]) tl.to('#fade', { opacity: 1, duration: 0.3 }, t - 0.3).to('#fade', { opacity: 0, duration: 0.3 }, t);
-      for (const [id, t] of [['#t1', 3.6], ['#t3', 19.6]]) {
+      for (const t of [3, 11, 19, 47, 55, 84]) tl.to('#fade', { opacity: 1, duration: 0.3 }, t - 0.3).to('#fade', { opacity: 0, duration: 0.3 }, t);
+      for (const [id, t] of [['#t1', 3.6], ['#t3', 47.6]]) {
         tl.from(id, { opacity: 0, x: -60, duration: 0.5 }, t).to(id, { opacity: 0, duration: 0.4 }, t + 4.1);
       }
-      tl.from('#end p', { opacity: 0, duration: 0.5 }, 27.2).from('#end small', { opacity: 0, duration: 0.5 }, 27.5)
-        .to('#fade', { opacity: 1, duration: 0.4 }, 28.6);
+      tl.from('#end p', { opacity: 0, duration: 0.5 }, 84.2).from('#end small', { opacity: 0, duration: 0.5 }, 84.5)
+        .to('#fade', { opacity: 1, duration: 0.4 }, 85.6);
       window.__timelines = window.__timelines || {};
       window.__timelines.main = tl;
     </script>

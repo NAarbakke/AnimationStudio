@@ -1,9 +1,19 @@
 node_modules/
 dist/
-cad/.venv/
 __pycache__/
-# video/: built site copy, Playwright clips, finished videos
+# Python environments (recreate with pip, see README)
+cad/.venv/
+video/manim/.venv/
+# scratch space for one-off experiments; scripts never write here
+tmp/
+
+# video/: built site copies, Playwright clips, finished videos, HyperFrames' local render state
 video/site/
+video/conops-site/
 video/snapshots/
 video/clips/
 video/out/
+video/.hyperframes/
+# ManimGX: the storyboards inspect/render write (the exported srm.json/engine.json are kept: math.html builds from them)
+video/**/*.storyboard*.png
+video/manim/out/

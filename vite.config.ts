@@ -1,9 +1,10 @@
 import { defineConfig, type Plugin } from 'vite';
 import { resolve, basename } from 'node:path';
 
-const root = import.meta.dirname;
+// The website lives in site/ (pages, src/, public/); the build still lands in dist/ at the project root.
+const root = resolve(import.meta.dirname, 'site');
 
-// Tells open pages when a CAD export in public/models changes, so they can swap the model in place
+// Tells open pages when a CAD export in site/public/models changes, so they can swap the model in place
 // (no full reload, simulation state kept). Export from your CAD script straight into that folder.
 const modelWatch = (): Plugin => ({
   name: 'model-watch',
@@ -23,10 +24,13 @@ const modelWatch = (): Plugin => ({
 });
 
 export default defineConfig({
+  root,
   plugins: [modelWatch()],
   // the Python venv is ~21k files: crawling it stalled the dev server for ~50 s on start
   server: { watch: { ignored: ['**/cad/.venv/**', '**/dist/**', '**/video/**'] } },
   build: {
+    outDir: resolve(import.meta.dirname, 'dist'),
+    emptyOutDir: true,
     target: 'es2022',
     chunkSizeWarningLimit: 800, // three.js itself (~630 kB), shared by all pages
     rollupOptions: {
@@ -34,6 +38,8 @@ export default defineConfig({
         launch: resolve(root, 'index.html'),
         engine: resolve(root, 'engine.html'),
         srm: resolve(root, 'srm.html'),
+        conops: resolve(root, 'conops.html'),
+        math: resolve(root, 'math.html'),
       },
     },
   },

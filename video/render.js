@@ -25,7 +25,7 @@ function virtualClock() {
 
 /**
  * @param {object} o
- * @param {string} o.page       page under the project root ("srm.html?film") or a full http(s) URL
+ * @param {string} o.page       page under site/ ("srm.html?film") or a full http(s) URL
  * @param {string} [o.out]      output file; the extension picks the container (default video/out/<page>.mp4)
  * @param {number} [o.duration] seconds of animation
  * @param {number} [o.fps]
@@ -35,18 +35,18 @@ function virtualClock() {
  * @param {string} [o.channel]  browser Playwright launches ("chrome", "msedge", or "chromium" for its own build)
  * @returns {Promise<string>} the output path
  */
-export async function renderVideo({ page: target, out, duration = 10, fps = 30, width = 1920, height = 1080, click = [], channel = 'chrome' }) {
+export async function renderVideo({ page: target, out, duration = 10, fps = 30, width = 1920, height = 1080, click = [], channel = 'chrome', captureFormat = 'png', start = 0, siteRoot }) {
   const name = basename(new URL(target, 'http://x/').pathname, '.html') || 'index';
   out = resolve(root, out ?? `video/out/${name}.mp4`);
   mkdirSync(dirname(out), { recursive: true });
 
   const remote = /^https?:/.test(target);
-  const server = remote ? null : await (await createServer({ root, logLevel: 'warn' })).listen();
+  const server = remote ? null : await (await createServer({ ...(siteRoot ? { root: siteRoot, configFile: false } : { configFile: resolve(root, 'vite.config.ts') }), logLevel: 'warn', server: { hmr: false, watch: null } })).listen();
   const url = remote ? target : new URL(target, server.resolvedUrls.local[0]).href;
 
   const browser = await chromium.launch({ channel: channel === 'chromium' ? undefined : channel, args: ['--ignore-gpu-blocklist', '--enable-gpu', '--use-angle=d3d11'] });
   const ffmpeg = spawn(process.env.FFMPEG_PATH || ffmpegStatic, [
-    '-y', '-loglevel', 'error', '-f', 'image2pipe', '-framerate', String(fps), '-c:v', 'png', '-i', '-',
+    '-y', '-loglevel', 'error', '-f', 'image2pipe', '-framerate', String(fps), '-c:v', captureFormat === 'jpeg' ? 'mjpeg' : 'png', '-i', '-',
     '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '18', '-movflags', '+faststart', out,
   ], { stdio: ['pipe', 'inherit', 'inherit'] });
   const encoded = once(ffmpeg, 'close');
@@ -54,9 +54,12 @@ export async function renderVideo({ page: target, out, duration = 10, fps = 30, 
 
   try {
     const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: 1 });
-    page.on('pageerror', e => console.error(`[page] ${e.message}`));
+    let pageError;
+    page.on('pageerror', e => { pageError = e; console.error(`[page] ${e.message}`); });
     await page.addInitScript(virtualClock);
-    await page.goto(url, { waitUntil: 'load' });
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 });
+    await page.waitForFunction(() => typeof window.__film !== 'undefined' || document.readyState === 'complete', null, { timeout: 120000 });
+    await page.evaluate(() => Promise.race([document.fonts.ready, new Promise(resolve => setTimeout(resolve, 15000))]));
     for (const sel of click) await page.click(sel);
 
     // Pages with a film mode (window.__film, see src/srm/main.ts) are told the time directly; the rest get rAF ticks.
@@ -66,13 +69,16 @@ export async function renderVideo({ page: target, out, duration = 10, fps = 30, 
     const frames = Math.round(duration * fps);
     const cdp = await page.context().newCDPSession(page);
     for (let i = 0; i < frames; i++) {
-      if (film) await page.evaluate(t => window.__film.seek(t), i / fps);
+      if (film) await page.evaluate(t => window.__film.seek(t), start + i / fps);
       else await page.evaluate(([n, ms]) => { for (let k = 0; k < n; k++) window.__step(ms); }, [sub, stepMs]);
       // straight CDP: lossless, and ~3× quicker than page.screenshot's fully compressed PNG
-      const { data } = await cdp.send('Page.captureScreenshot', { format: 'png', optimizeForSpeed: true });
+      const capture = captureFormat === 'jpeg' ? { format: 'jpeg', quality: 96 } : { format: 'png', optimizeForSpeed: true };
+      const { data } = await cdp.send('Page.captureScreenshot', capture);
       if (ffmpeg.exitCode !== null) break;
       if (!ffmpeg.stdin.write(Buffer.from(data, 'base64'))) await once(ffmpeg.stdin, 'drain');
+      if (pageError) throw pageError;
       if (process.stdout.isTTY) process.stdout.write(`\rframe ${i + 1}/${frames}`);
+      else if (i % 150 === 0 || i === frames - 1) console.log(`frame ${i + 1}/${frames}`);
     }
     if (process.stdout.isTTY) process.stdout.write('\n');
   } finally {

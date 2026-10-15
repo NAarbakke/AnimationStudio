@@ -1,6 +1,6 @@
 """Default solid rocket motor for the Solid Motor lab (build123d, millimetres, motor axis = Z, nozzle at -Z).
 
-    npm run cad           # export once  -> public/models/srm.glb (+ srm.json)
+    npm run cad           # export once  -> site/public/models/srm.glb (+ srm.json)
     npm run cad:watch     # re-export every time you save this file
 
 The lab finds parts by label, so keep these names (case-insensitive, prefixes are fine):
@@ -8,7 +8,7 @@ The lab finds parts by label, so keep these names (case-insensitive, prefixes ar
     nozzle*         must contain the throat -- REQUIRED; throat/exit area come from this
     case*, insulation*, forward_closure*, igniter*   -- optional, displayed
 Everything else is displayed as-is. Swap this file for your own CadQuery/FreeCAD export as long as
-the labels match and the result is a .glb in public/models/.
+the labels match and the result is a .glb in site/public/models/.
 """
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ import sys
 import time
 from pathlib import Path
 
-OUT = Path(__file__).resolve().parent.parent / "public" / "models"
+OUT = Path(__file__).resolve().parent.parent / "site" / "public" / "models"
 
 # ---- parameters (mm) -------------------------------------------------------
 GRAIN = "bates"          # "bates" | "star" | "finocyl"

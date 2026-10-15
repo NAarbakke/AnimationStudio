@@ -8,11 +8,16 @@
     "preview": "vite preview",
     "cad": "cad/.venv/Scripts/python cad/srm.py",
     "cad:watch": "cad/.venv/Scripts/python cad/srm.py --watch",
-    "video": "vite build --base ./ --outDir video/site --emptyOutDir && node video/hf.js render video --output video/out/srm-hyperframes.mp4",
+    "video": "vite build --base ./ --outDir ../video/site --emptyOutDir && node video/hf.js render video --output video/out/srm-hyperframes.mp4",
     "render": "node video/render.js",
-    "sample": "node video/render.js index.html -d 15 -o video/clips/launch.mp4 && node video/render.js engine.html -d 8 -o video/clips/engine.mp4 && node video/render.js srm.html?film -d 9 -o video/clips/srm.mp4 && node video/hf.js render video -c showcase.html --output video/out/showcase.mp4"
+    "video:conops": "npm run build && node video/conops/export.js",
+    "video:conops:review": "node video/conops/review.js",
+    "stills": "node video/stills.js",
+    "insert": "node video/manim/insert.js",
+    "sample": "node video/render.js index.html -d 15 -o video/clips/launch.mp4 && node video/render.js engine.html -d 8 -o video/clips/engine.mp4 && node video/render.js srm.html?film -d 9 -o video/clips/srm.mp4 && npm run insert && node video/hf.js render video -c showcase.html --output video/out/showcase.mp4"
   },
   "dependencies": {
+    "manimgx": "0.1.1",
     "three": "0.147.0"
   },
   "devDependencies": {
