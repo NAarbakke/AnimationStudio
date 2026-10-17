@@ -4,6 +4,7 @@
 // of film time t, so any frame can be rendered on its own (conops.html?film for video/render.js, ?t=120 to preview).
 import * as THREE from 'three';
 import { createStage, lin, NOISE } from '../shared/stage';
+import { arcticHeight, TERRAIN_GLSL } from './arctic.js';
 
 const DEG = Math.PI / 180, DUR = 180;
 const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
@@ -31,34 +32,7 @@ const mE = Object.fromEntries(Object.entries(E).map(([k, v]) => [k, M(v)]));
 // ---------- terrain (mirrored exactly in GLSL below) ----------
 const LAUNCH_ELEV = 18 * DEG, CANISTER = new THREE.Vector3(0, 9.4, 0), AXIS = new THREE.Vector3(Math.cos(LAUNCH_ELEV), Math.sin(LAUNCH_ELEV), 0);
 let X2 = 1e9; // far coastline, placed after a first path pass so the missile reaches it during the cruise shots
-const shore1 = z => 1500 + 300 * Math.sin(z * 0.0011) + 120 * Math.sin(z * 0.0037 + 1);
-const shore2 = z => X2 + 800 * Math.sin(z * 0.0006 + 0.5) + 300 * Math.sin(z * 0.0021);
-const landH1 = (x, z) => 5 + 4 * Math.sin(x * 0.003 + 1.3) * Math.sin(z * 0.004) + 2 * Math.sin(x * 0.011 + z * 0.007);
-const landH2 = (x, z) => {
-  const r = clamp((x - shore2(z)) / 2500, 0, 1);
-  return 4 + r * (60 + 55 * Math.sin(x * 0.0011 + z * 0.0007) * Math.sin(z * 0.0013 - x * 0.0004) + 22 * Math.sin(x * 0.0047 + 0.7) * Math.sin(z * 0.0051)) + 6 * r * Math.sin(x * 0.017 + z * 0.013);
-};
-function terrainH(x, z) {
-  const m1 = sstep(80, -80, x - shore1(z)), m2 = sstep(-80, 80, x - shore2(z));
-  let h = mix(-14, landH1(x, z), m1);
-  h = mix(h, landH2(x, z), m2);
-  return mix(h, 6, sstep(70, 40, Math.hypot(x + 5, z)));
-}
-const TERRAIN_GLSL = `
-uniform float uX2;
-float shore1(float z){ return 1500.0 + 300.0*sin(z*0.0011) + 120.0*sin(z*0.0037 + 1.0); }
-float shore2(float z){ return uX2 + 800.0*sin(z*0.0006 + 0.5) + 300.0*sin(z*0.0021); }
-float landH1(float x, float z){ return 5.0 + 4.0*sin(x*0.003 + 1.3)*sin(z*0.004) + 2.0*sin(x*0.011 + z*0.007); }
-float landH2(float x, float z){
-  float r = clamp((x - shore2(z))/2500.0, 0.0, 1.0);
-  return 4.0 + r*(60.0 + 55.0*sin(x*0.0011 + z*0.0007)*sin(z*0.0013 - x*0.0004) + 22.0*sin(x*0.0047 + 0.7)*sin(z*0.0051)) + 6.0*r*sin(x*0.017 + z*0.013);
-}
-float terrainH(vec2 p){
-  float m1 = smoothstep(80.0, -80.0, p.x - shore1(p.y)), m2 = smoothstep(-80.0, 80.0, p.x - shore2(p.y));
-  float h = mix(-14.0, landH1(p.x, p.y), m1);
-  h = mix(h, landH2(p.x, p.y), m2);
-  return mix(h, 6.0, smoothstep(70.0, 40.0, length(p + vec2(5.0, 0.0))));
-}`;
+const terrainH = (x, z) => arcticHeight(x, z, X2);
 
 // ---------- flight path ----------
 // Integrated once at load in mission time. Speeds and the 6° climb follow the paper's sizing cases; the rest is staging.
@@ -126,26 +100,28 @@ renderer.localClippingEnabled = true;
 camera.near = 0.1; camera.far = 60000; camera.updateProjectionMatrix();
 scene.background = null;
 
-const SUN = new THREE.Vector3(0.35, 0.27, 0.9).normalize();
+const SUN = new THREE.Vector3(0.35, 0.19, 0.9).normalize();
 const SKY_GLSL = `
 uniform vec3 uSun;
 vec3 skyColor(vec3 d){
   float e = clamp(d.y, 0.0, 1.0), mu = max(dot(d, uSun), 0.0);
-  vec3 col = mix(vec3(0.78, 0.74, 0.70), vec3(0.13, 0.25, 0.55), pow(e, 0.5));
-  col += vec3(1.0, 0.6, 0.3)*pow(mu, 6.0)*0.5*(1.0 - e);
-  col += vec3(1.0, 0.82, 0.58)*pow(mu, 60.0)*0.7;
-  if (d.y < 0.0) col = mix(vec3(0.78, 0.74, 0.70), vec3(0.42, 0.44, 0.46), clamp(-d.y*5.0, 0.0, 1.0));
+  vec3 col = mix(vec3(0.33, 0.40, 0.47), vec3(0.09, 0.16, 0.25), pow(e, 0.5));
+  float cloud = sin(d.x*9.0 + d.z*5.0 + d.y*21.0)*0.45 + sin(d.z*19.0 - d.x*13.0 + d.y*40.0)*0.2;
+  float layer = smoothstep(-0.3, 0.4, cloud)*smoothstep(0.0, 0.14, e);
+  col = mix(col, vec3(0.40, 0.45, 0.50), layer*0.55);
+  col += vec3(0.58, 0.60, 0.59)*pow(mu, 18.0)*0.17;
+  if (d.y < 0.0) col = mix(vec3(0.33, 0.40, 0.47), vec3(0.13, 0.17, 0.20), clamp(-d.y*5.0, 0.0, 1.0));
   return col;
 }
 vec3 fogged(vec3 col, vec3 wpos, vec3 cam){
   vec3 dv = wpos - cam; float d = length(dv);
-  float f = 1.0 - exp(-d/14000.0) * exp(-max(0.0, 0.0));
+  float f = 1.0 - exp(-d/23000.0);
   return mix(col, skyColor(dv/d), clamp(f, 0.0, 1.0));
 }`;
 const shared = { uSun: { value: SUN }, uX2: { value: X2 }, uTime: { value: 0 } };
 
-const sun = new THREE.DirectionalLight(lin(0xfff0dc), 2.7); sun.position.copy(SUN).multiplyScalar(100);
-const hemi = new THREE.HemisphereLight(lin(0xa9bfe0), lin(0x5a5444), 0.75);
+const sun = new THREE.DirectionalLight(lin(0xe5edf5), 2.0); sun.position.copy(SUN).multiplyScalar(100);
+const hemi = new THREE.HemisphereLight(lin(0xc0d2e5), lin(0x525b62), 1.05);
 scene.add(sun, sun.target, hemi);
 
 // sky dome follows the camera; the same function feeds the environment map
@@ -153,7 +129,7 @@ const skyMat = new THREE.ShaderMaterial({
   uniforms: shared, side: THREE.BackSide, depthWrite: false, depthTest: false,
   vertexShader: `varying vec3 vDir; void main(){ vDir = position; vec4 p = projectionMatrix*modelViewMatrix*vec4(position,1.0); gl_Position = p.xyww; }`,
   fragmentShader: SKY_GLSL + `varying vec3 vDir; void main(){ vec3 d = normalize(vDir); vec3 c = skyColor(d);
-    float mu = dot(d, uSun); c += vec3(1.0,0.92,0.8)*smoothstep(0.99985, 0.99992, mu)*30.0; gl_FragColor = vec4(c, 1.0); }`,
+    float mu = dot(d, uSun); c += vec3(0.8,0.86,0.9)*smoothstep(0.99975, 0.99992, mu)*2.0; gl_FragColor = vec4(c, 1.0); }`,
 });
 const sky = new THREE.Mesh(new THREE.SphereGeometry(30000, 48, 24), skyMat);
 sky.renderOrder = -10; sky.frustumCulled = false; scene.add(sky);
@@ -164,7 +140,7 @@ sky.renderOrder = -10; sky.frustumCulled = false; scene.add(sky);
 
 // ---------- terrain: polar grid centred under the camera, heights and shading in the shader ----------
 {
-  const K = 170, A = 256, q = 0.045, pos = [], idx = [];
+  const K = 215, A = 384, q = 0.035, pos = [], idx = [];
   pos.push(0, 0, 0);
   for (let k = 1; k <= K; k++) { const r = 1.5 * ((1 + q) ** k - 1) / q; for (let a = 0; a < A; a++) { const th = (a / A) * Math.PI * 2; pos.push(Math.cos(th) * r, 0, Math.sin(th) * r); } }
   for (let a = 0; a < A; a++) idx.push(0, 1 + ((a + 1) % A), 1 + a);
@@ -191,26 +167,34 @@ sky.renderOrder = -10; sky.frustumCulled = false; scene.add(sky);
           vec3 N = normalize(vec3((n1*0.6 + n2*0.4)*0.12*fade + snoise(vec3(p*0.4, uTime*0.6))*0.05*exp(-d/300.0), 1.0, (snoise(vec3(q.yx + 3.0, uTime*0.15))*0.6 + n2*0.4)*0.12*fade));
           vec3 Rf = reflect(-V, N); Rf.y = abs(Rf.y);
           float fr = 0.02 + 0.98*pow(1.0 - max(dot(N, V), 0.0), 5.0);
-          vec3 deep = vec3(0.02, 0.06, 0.075) + vec3(0.03, 0.05, 0.04)*max(dot(N, uSun), 0.0);
-          col = mix(deep, skyColor(Rf), fr) + vec3(1.0, 0.85, 0.6)*pow(max(dot(Rf, uSun), 0.0), 300.0)*5.0;
+          vec3 deep = vec3(0.012, 0.031, 0.043) + vec3(0.012, 0.023, 0.032)*max(dot(N, uSun), 0.0);
+          col = mix(deep, skyColor(Rf)*0.65, fr) + vec3(0.7, 0.8, 0.9)*pow(max(dot(Rf, uSun), 0.0), 240.0)*0.7;
+          float whitecap = smoothstep(0.65, 0.9, snoise(vec3(p*0.11 + vec2(uTime*0.18,0.0), 4.0)))*exp(-d/2200.0);
+          col = mix(col, vec3(0.43,0.52,0.57), whitecap*0.22);
           float foam = smoothstep(-2.0, 0.1, h)*(0.5 + 0.5*snoise(vec3(p*0.08, uTime*0.4)));
           col = mix(col, vec3(0.75, 0.78, 0.8), foam*0.6);
         } else {
           float e = max(0.6, d*0.002);
           vec3 N = normalize(vec3(terrainH(p - vec2(e, 0.0)) - terrainH(p + vec2(e, 0.0)), 2.0*e, terrainH(p - vec2(0.0, e)) - terrainH(p + vec2(0.0, e))));
           float n = snoise(vec3(p*0.004, 1.0))*0.5 + snoise(vec3(p*0.03, 2.0))*0.3 + snoise(vec3(p*0.2, 3.0))*0.2*exp(-d/400.0);
-          vec3 tundra = mix(vec3(0.19, 0.17, 0.10), vec3(0.28, 0.27, 0.15), 0.5 + 0.5*n);
-          tundra = mix(tundra, vec3(0.12, 0.15, 0.08), smoothstep(0.2, 0.6, snoise(vec3(p*0.012, 4.0)))); // dark scrub
-          vec3 sand = vec3(0.46, 0.42, 0.33);
-          col = mix(sand, tundra, smoothstep(0.6, 3.5, h + n*1.5));
-          col = mix(col, vec3(0.33, 0.31, 0.29), smoothstep(0.75, 0.55, N.y)); // rock on steep slopes
-          col = mix(col, vec3(0.85, 0.88, 0.9), smoothstep(0.55, 0.8, snoise(vec3(p*0.006, 5.0)) + h*0.004)*smoothstep(0.8, 0.95, N.y)*0.7); // snow patches
+          vec3 scree = mix(vec3(0.072, 0.082, 0.092), vec3(0.20, 0.185, 0.17), 0.5 + 0.5*n);
+          float strata = 0.5 + 0.5*sin(h*1.8 + snoise(vec3(p*0.02, 7.0))*4.0);
+          col = mix(vec3(0.045, 0.057, 0.065), scree, smoothstep(0.5, 5.0, h));
+          col *= 0.83 + 0.17*strata;
+          col = mix(col, vec3(0.10, 0.105, 0.11), 1.0 - smoothstep(0.55, 0.83, N.y));
+          // Wind-combed snow in hollows, broader cover on the distant ridges.
+          float drift = snoise(vec3(p*vec2(0.006,0.008),5.0))*0.65 + snoise(vec3(p*0.035,8.0))*0.16;
+          float snow = smoothstep(0.22, 0.45, drift + h*0.0011)*smoothstep(0.58, 0.91, N.y);
+          col = mix(col, vec3(0.66, 0.73, 0.80)*(0.93 + 0.07*n), snow);
+          float grit = snoise(vec3(p*0.7,11.0))*exp(-d/600.0);
+          col *= 0.92 + grit*0.18;
           // launch site: concrete apron and access road
           float pad = smoothstep(1.0, -1.0, max(abs(p.x + 8.0) - 20.0, abs(p.y) - 14.0));
           float road = smoothstep(3.5, 3.0, abs(p.y - 4.0*sin(p.x*0.004))) * step(p.x, -26.0);
-          col = mix(col, vec3(0.5, 0.49, 0.46)*(0.9 + 0.1*n), max(pad, road));
+          float joints = max(1.0-smoothstep(0.02,0.07,abs(sin(p.x*0.65))),1.0-smoothstep(0.02,0.07,abs(sin(p.y*0.65))));
+          col = mix(col, vec3(0.23, 0.25, 0.26)*(0.9 + 0.1*n)*(1.0-joints*0.25), max(pad, road));
           float lit = max(dot(N, uSun), 0.0);
-          col *= vec3(1.0, 0.94, 0.86)*lit*2.4 + vec3(0.5, 0.58, 0.72)*(0.45 + 0.25*N.y);
+          col *= vec3(0.86, 0.92, 1.0)*lit*1.3 + vec3(0.49, 0.58, 0.70)*(0.5 + 0.25*N.y);
         }
         gl_FragColor = vec4(fogged(col, vW, cameraPosition), 1.0);
       }`,
@@ -220,15 +204,15 @@ sky.renderOrder = -10; sky.frustumCulled = false; scene.add(sky);
 
 // ---------- materials ----------
 const clip = new THREE.Plane(new THREE.Vector3(0, 0, -1), 1e6); // cutaway plane, world space, set each frame
-const std = (hex, o = {}) => new THREE.MeshStandardMaterial({ color: lin(hex), roughness: 0.55, metalness: 0.25, envMapIntensity: 0.6, ...o });
+const std = (hex, o = {}) => new (o.specularIntensity === undefined ? THREE.MeshStandardMaterial : THREE.MeshPhysicalMaterial)({ color: lin(hex), roughness: 0.55, metalness: 0.25, envMapIntensity: 0.6, ...o });
 const MAT = {
-  skin: std(0x646a58, { side: THREE.DoubleSide, clippingPlanes: [clip], clipShadows: true }),
+  skin: std(0xa3161d, { roughness: 0.58, metalness: 0.05, specularIntensity: 0.25, envMapIntensity: 0.35, side: THREE.DoubleSide, clippingPlanes: [clip], clipShadows: true }),
   dark: std(0x2a2c29, { roughness: 0.7 }),
-  wing: std(0x5e6453),
-  booster: std(0x9a9c95, { roughness: 0.6 }),
+  wing: std(0xa01820, { roughness: 0.58, metalness: 0.05, specularIntensity: 0.25, envMapIntensity: 0.35 }),
+  booster: std(0xbfc2c3, { roughness: 0.4, metalness: 0.48 }),
   kicker: std(0x3b3e38),
   nozzle: std(0x2f2b28, { metalness: 0.7, roughness: 0.4, side: THREE.DoubleSide, clippingPlanes: [clip] }),
-  canister: std(0x5f654f, { roughness: 0.75, side: THREE.DoubleSide }),
+  canister: std(0x454e49, { roughness: 0.8, side: THREE.DoubleSide }),
   steel: std(0x50544c, { metalness: 0.5, roughness: 0.5 }),
   concrete: std(0x8c8980, { roughness: 0.95, metalness: 0 }),
   // cutaway internals
@@ -241,23 +225,44 @@ const MAT = {
   payload: std(0x4b5244, { roughness: 0.8, clippingPlanes: [clip] }),
   avionics: std(0x2d3a45, { roughness: 0.6, clippingPlanes: [clip] }),
 };
+// Subtle paint variation in object space; stable when seeking or moving the camera.
+for (const mat of [MAT.skin, MAT.wing]) {
+  mat.onBeforeCompile = shader => {
+    shader.vertexShader = 'varying vec3 vPaint;\n' + shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvPaint = position;');
+    shader.fragmentShader = 'varying vec3 vPaint;\n' + shader.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+      float grain = fract(sin(dot(floor(vPaint*850.0), vec3(12.9898,78.233,37.719)))*43758.5453);
+      float wear = sin(vPaint.x*10.0 + sin(vPaint.z*23.0))*sin(vPaint.y*32.0 + vPaint.x*2.0);
+      diffuseColor.rgb *= 0.96 + grain*0.055 + wear*0.035;`);
+  };
+  mat.customProgramCacheKey = () => 'conops-red-paint-v1';
+}
 
 // ---------- vehicle (Table 1: 9.51 m, 0.846 × 0.561 m section, 5.6 m span, 14.8° sweep) ----------
 const LEN = 9.51, HW = 0.423, HH = 0.2805, XN = LEN / 2, XT = -LEN / 2;
+// Exterior silhouette after Figures 2–3: squared body, blunt nose and deeper,
+// angular rear fairing. These are visual contours, not engineering geometry.
+const SHELL = [
+  [XT, 0.19, -0.18, HW*0.80], [XT+0.5, 0.21, -0.23, HW*0.88],
+  [-2.1, 0.33, -0.43, HW], [-1.6, 0.33, -0.43, HW], [-1.35, HH, -HH, HW],
+  [XN-1.15, HH, -HH, HW], [XN-0.7, 0.24, -0.25, HW*0.86],
+  [XN-0.28, 0.13, -0.16, HW*0.48], [XN-0.08, 0.045, -0.075, HW*0.20], [XN, -0.015, -0.015, 0],
+];
+function shellPoint(x, angle, offset = 1) {
+  let i = 1; while (i < SHELL.length-1 && x > SHELL[i][0]) i++;
+  const a = SHELL[i-1], b = SHELL[i], u = clamp((x-a[0])/(b[0]-a[0]),0,1);
+  const top = mix(a[1],b[1],u), bottom = mix(a[2],b[2],u), width = mix(a[3],b[3],u);
+  const sn = Math.sin(angle), cs = Math.cos(angle);
+  return new THREE.Vector3(x, (top+bottom)/2 + Math.sign(sn)*Math.abs(sn)**0.32*(top-bottom)/2*offset, Math.sign(cs)*Math.abs(cs)**0.32*width*offset);
+}
 function fuselageGeo() {
-  const NX = 90, NA = 56, pos = [], idx = [];
-  const scale = x => { // blunt nose over the front 1.2 m, slight boat-tail at the back
-    if (x > XN - 1.2) { const u = (x - (XN - 1.2)) / 1.2; return Math.sqrt(Math.max(0, 1 - u ** 2.2)) * 0.97 + 0.03 * (1 - u); }
-    if (x < XT + 0.9) return mix(0.78, 1, (x - XT) / 0.9);
-    return 1;
-  };
-  for (let i = 0; i <= NX; i++) {
-    const u = i / NX, x = XT + (XN - XT) * (1 - (1 - u) ** 1.0), s = i === NX ? 0 : scale(x);
-    for (let a = 0; a < NA; a++) {
-      const th = (a / NA) * Math.PI * 2, c = Math.cos(th), sn = Math.sin(th);
-      pos.push(x, Math.sign(sn) * Math.abs(sn) ** 0.45 * HH * s, Math.sign(c) * Math.abs(c) ** 0.45 * HW * s);
-    }
+  const NA = 64, pos = [], idx = [], stations = [];
+  for (let i = 1; i < SHELL.length; i++) {
+    const a = SHELL[i-1][0], b = SHELL[i][0], n = Math.ceil((b-a)*14);
+    for (let j = 0; j < n; j++) stations.push(mix(a,b,j/n));
   }
+  stations.push(XN);
+  const NX = stations.length-1;
+  for (const x of stations) for (let a = 0; a < NA; a++) pos.push(...shellPoint(x, a/NA*Math.PI*2).toArray());
   for (let i = 0; i < NX; i++) for (let a = 0; a < NA; a++) {
     const p = i * NA + a, q = i * NA + ((a + 1) % NA);
     idx.push(p, p + NA, q, q, p + NA, q + NA);
@@ -277,14 +282,34 @@ const alongX = g => g.rotateZ(-Math.PI / 2); // three.js cylinders run along +y;
 function buildMissile() {
   const root = new THREE.Group();
   const skin = new THREE.Mesh(fuselageGeo(), MAT.skin); root.add(skin);
-  // panel lines and a dark nose band
+  // Fine seams follow the actual outer skin and participate in the cutaway clip.
+  const seamMat = new THREE.LineBasicMaterial({ color: lin(0x4b151b), transparent: true, opacity: 0.7, clippingPlanes: [clip] });
+  const details = new THREE.Group(); details.name = 'Exterior panel seams'; root.add(details);
+  for (const x of [3.6, 2.8, 1.15, -0.65, -1.35, -1.6, -2.1, -3.45, -4.35]) {
+    const pts = Array.from({length:80}, (_,i) => shellPoint(x,i/80*Math.PI*2,1.005));
+    details.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), seamMat));
+  }
+  for (const angle of [0.3, Math.PI-0.3, Math.PI+0.3, 2*Math.PI-0.3]) {
+    const pts = Array.from({length:100}, (_,i) => shellPoint(mix(XT+0.06,XN-0.25,i/99),angle,1.006));
+    details.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),seamMat));
+  }
+  const boltMat = std(0x8a7875, { roughness:0.65, clippingPlanes:[clip] });
+  const bolts = new THREE.InstancedMesh(new THREE.SphereGeometry(0.008,6,4),boltMat,128);
+  let boltIndex = 0;
+  for (const x of [3.58,2.78,1.13,-0.67,-1.62,-2.12,-3.47,-4.37]) for(let j=0;j<16;j++) {
+    const p = shellPoint(x,(j+0.5)/16*Math.PI*2,1.01); _m4.makeTranslation(p.x,p.y,p.z); bolts.setMatrixAt(boltIndex++,_m4);
+  }
+  details.add(bolts);
+  for (const side of [-1,1]) for (const x of [2.05,-0.15]) {
+    const z = side*(HW+0.003), pts = [[x-.29,-.10,z],[x+.29,-.10,z],[x+.32,-.07,z],[x+.32,.10,z],[x-.32,.10,z],[x-.32,-.07,z]].map(p=>new THREE.Vector3(...p));
+    details.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts),seamMat));
+  }
   const tailCap = new THREE.Mesh(new THREE.BoxGeometry(0.02, HH * 1.5, HW * 1.5), MAT.nozzle); tailCap.position.x = XT + 0.01; root.add(tailCap);
-  // ventral intake (fixed), x 1.3–2.5
-  const intake = new THREE.Group();
-  const lip = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.16, 0.46), MAT.skin); lip.position.set(1.85, -HH - 0.07, 0);
-  const mouth = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.12), new THREE.MeshBasicMaterial({ color: 0x050505 }));
-  mouth.rotation.y = Math.PI / 2; mouth.position.set(2.452, -HH - 0.07, 0);
-  intake.add(lip, mouth); root.add(intake);
+  // Intake behind the wing, represented as a dark opening at the existing aft
+  // fairing shoulder. The forward belly stays flush: no projecting intake box.
+  const intakePosition = new THREE.Vector3(-1.38, -0.35, 0);
+  const mouth = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.10), new THREE.MeshBasicMaterial({ color: 0x090b0c, side: THREE.DoubleSide, clippingPlanes: [clip] }));
+  mouth.rotation.y = Math.PI / 2; mouth.position.copy(intakePosition); root.add(mouth);
   // tail nozzle
   const noz = new THREE.Mesh(alongX(new THREE.CylinderGeometry(0.2, 0.17, 0.5, 28, 1, true)), MAT.nozzle); noz.position.x = XT + 0.1; root.add(noz);
   const nozGlow = new THREE.Mesh(new THREE.CircleGeometry(0.17, 24), new THREE.MeshBasicMaterial({ color: 0x000000 }));
@@ -294,14 +319,18 @@ function buildMissile() {
   const wingPts = [[0.36, 0], [0.36 - 2.75 * 0.306, 2.75], [0.36 - 2.75 * 0.306 - 0.46, 2.75], [-0.35, 0]];
   const wings = [1, -1].map((side, k) => {
     const piv = new THREE.Group(); piv.position.set(0.55, HH + 0.012 + k * 0.045, 0);
-    piv.add(new THREE.Mesh(surfaceGeo(wingPts, 0.035, side), MAT.wing)); root.add(piv); piv.userData.side = side; return piv;
+    piv.add(new THREE.Mesh(surfaceGeo(wingPts, 0.035, side), MAT.wing));
+    const seam = [[-0.24,0.6],[-0.74,2.66]].map(([x,z])=>new THREE.Vector3(x,0.035,side*z));
+    piv.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(seam),seamMat));
+    const hinge = new THREE.Mesh(new THREE.CylinderGeometry(0.14,0.16,0.035,32),MAT.wing); hinge.position.y=0.03; piv.add(hinge);
+    root.add(piv); piv.userData.side = side; return piv;
   });
-  // tail: vertical fin on top, two low horizontal stabilisers (2.38 m span), hinged along x
-  const finPts = [[0.0, 0], [-0.32, 0.72], [-0.6, 0.72], [-0.52, 0]];
-  const fin = new THREE.Group(); fin.position.set(XT + 0.95, HH, 0);
-  const finMesh = new THREE.Mesh(surfaceGeo(finPts, 0.03), MAT.wing); finMesh.rotation.x = -Math.PI / 2; fin.add(finMesh); root.add(fin);
+  // Figure 3's distinctive downward fin, with upper horizontal tail surfaces.
+  const finPts = [[0.0, 0], [-0.32, 0.95], [-0.72, 0.95], [-0.48, 0]];
+  const fin = new THREE.Group(); fin.position.set(XT + 0.63, -0.21, 0);
+  const finMesh = new THREE.Mesh(surfaceGeo(finPts, 0.03), MAT.wing); finMesh.rotation.x = Math.PI / 2; fin.add(finMesh); root.add(fin);
   const stabPts = [[0.0, 0], [-0.3, 0.77], [-0.55, 0.77], [-0.5, 0]];
-  const stabs = [1, -1].map(side => { const g = new THREE.Group(); g.position.set(XT + 0.95, -HH * 0.5, side * HW * 0.95); g.add(new THREE.Mesh(surfaceGeo(stabPts, 0.03, side), MAT.wing)); g.userData.side = side; root.add(g); return g; });
+  const stabs = [1, -1].map(side => { const g = new THREE.Group(); g.position.set(XT + 0.72, 0.22, side * HW * 0.7); g.add(new THREE.Mesh(surfaceGeo(stabPts, 0.03, side), MAT.wing)); g.userData.side = side; root.add(g); return g; });
 
   // kicker: single aft solid motor
   const kicker = new THREE.Group();
@@ -314,11 +343,14 @@ function buildMissile() {
   // twin strap-on boosters on the lower flanks
   const srbs = [1, -1].map(side => {
     const g = new THREE.Group();
-    const body = new THREE.Mesh(alongX(new THREE.CylinderGeometry(0.17, 0.17, 2.4, 28)), MAT.booster); g.add(body);
-    const cone = new THREE.Mesh(alongX(new THREE.ConeGeometry(0.17, 0.45, 28)), MAT.booster); cone.position.x = 1.42; g.add(cone);
-    const bell = new THREE.Mesh(alongX(new THREE.CylinderGeometry(0.08, 0.15, 0.28, 24, 1, true)), MAT.nozzle); bell.position.x = -1.34; g.add(bell);
-    for (const x of [0.8, -0.8]) { const st = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.06, 0.12), MAT.dark); st.position.set(x, 0.06, -side * 0.15); g.add(st); }
-    g.userData.side = side; g.userData.home = new THREE.Vector3(-2.75, -0.13, side * (HW + 0.17)); g.userData.cant = side * 6 * DEG;
+    const body = new THREE.Mesh(alongX(new THREE.CylinderGeometry(0.18, 0.18, 4.9, 40)), MAT.booster); g.add(body);
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.18,32,16),MAT.booster); cap.scale.x=2.4; cap.position.x=2.45; g.add(cap);
+    const bell = new THREE.Mesh(alongX(new THREE.CylinderGeometry(0.08, 0.15, 0.28, 24, 1, true)), MAT.nozzle); bell.position.x = -2.58; g.add(bell);
+    for (const x of [-2.4,-1.4,1.35,2.42]) {
+      const band = new THREE.Mesh(alongX(new THREE.CylinderGeometry(0.184,0.184,0.035,32)),MAT.steel); band.position.x=x; g.add(band);
+    }
+    for (const x of [1.35, -1.4]) { const st = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.08, 0.15), MAT.dark); st.position.set(x, 0.06, -side * 0.15); g.add(st); }
+    g.userData.side = side; g.userData.home = new THREE.Vector3(0.05, -0.16, side * (HW + 0.18)); g.userData.cant = 0;
     g.position.copy(g.userData.home); g.rotation.y = g.userData.cant; root.add(g); return g;
   });
 
@@ -332,10 +364,8 @@ function buildMissile() {
   label.payload = new THREE.Vector3(2.55, 0.2, 0.15);
   const shield = new THREE.Mesh(alongX(new THREE.CylinderGeometry(0.3, 0.33, 0.32, 40)), MAT.shield); shield.position.set(1.66, 0.04, 0); inner.add(shield);
   label.shield = new THREE.Vector3(1.66, 0.25, 0.1);
-  const duct = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
-    new THREE.Vector3(2.45, -0.35, 0), new THREE.Vector3(1.8, -0.34, 0), new THREE.Vector3(1.2, -0.24, 0), new THREE.Vector3(0.95, -0.06, 0), new THREE.Vector3(0.8, 0, 0)]), 40, 0.13, 24, false), MAT.duct);
-  inner.add(duct);
-  label.intake = new THREE.Vector3(2.1, -0.36, 0.1);
+  // Remove the old speculative forward intake duct with the exterior box.
+  label.intake = intakePosition.clone();
   const casing = new THREE.Mesh(alongX(new THREE.CylinderGeometry(0.3, 0.3, 4.05, 48, 1, true)), MAT.duct); casing.position.x = -1.2; inner.add(casing);
   const shaft = new THREE.Mesh(alongX(new THREE.CylinderGeometry(0.03, 0.03, 3.3, 12)), MAT.blade); shaft.position.x = -0.8; inner.add(shaft);
   // compressor and turbine stages: discs with blades, spun by spool angle
@@ -379,8 +409,8 @@ function buildMissile() {
 const V = buildMissile();
 scene.add(V.root);
 
-// flow tracers for the cutaway: cold air in through the intake, heated in the core, out of the nozzle
-const FLOW = [[2.6, -0.35], [1.8, -0.34], [1.2, -0.24], [0.9, -0.05], [0.7, 0], [-0.2, 0], [-1.9, 0], [-2.4, 0], [-3.1, 0], [-4.65, 0], [-6.5, 0]].map(([x, y]) => new THREE.Vector3(x, y, 0));
+// Schematic cutaway tracers start inside the engine; no invented inlet routing.
+const FLOW = [[0.7, 0], [-0.2, 0], [-1.9, 0], [-2.4, 0], [-3.1, 0], [-4.65, 0], [-6.5, 0]].map(([x, y]) => new THREE.Vector3(x, y, 0));
 const FLOW_LEN = FLOW.slice(1).reduce((s, p, i) => s + p.distanceTo(FLOW[i]), 0);
 const flow = (() => {
   const N = 900, r = rng(7), geo = new THREE.BufferGeometry();
@@ -429,8 +459,14 @@ const canister = new THREE.Group(); canister.position.copy(CANISTER); canister.r
   const shelter = new THREE.Group(); shelter.position.set(-34, 6, 0); site.add(shelter);
   const shW = 9, shH = 7, shL = 18;
   for (const [w, h, d, x, y, z] of [[shL, 0.3, shW, 0, shH, 0], [shL, shH, 0.3, 0, shH / 2, shW / 2], [shL, shH, 0.3, 0, shH / 2, -shW / 2], [0.3, shH, shW, -shL / 2, shH / 2, 0]]) {
-    const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), std(0x7d806f, { roughness: 0.8 })); b.position.set(x, y, z); shelter.add(b);
+    const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), std(0x606b70, { roughness: 0.85 })); b.position.set(x, y, z); shelter.add(b);
   }
+  const ribs = new THREE.InstancedMesh(new THREE.BoxGeometry(0.06,shH,0.08),MAT.steel,80);
+  let rib=0;
+  for (const side of [-1,1]) for(let i=0;i<40;i++) { _m4.makeTranslation(-shL/2+(i+.5)*shL/40,shH/2,side*(shW/2+.17)); ribs.setMatrixAt(rib++,_m4); }
+  shelter.add(ribs);
+  const snowMat = std(0xc2d0d9,{roughness:1,metalness:0});
+  const roofSnow = new THREE.Mesh(new THREE.BoxGeometry(shL*.98,0.09,shW*.85),snowMat); roofSnow.position.set(0,shH+.2,-.4); shelter.add(roofSnow);
   for (const z of [-3.2, 3.2]) { const rail = new THREE.Mesh(new THREE.BoxGeometry(60, 0.15, 0.2), MAT.steel); rail.position.set(-20, 6.08, z); site.add(rail); }
   // blast wall, service building, light masts
   const wall = new THREE.Mesh(new THREE.BoxGeometry(1.2, 4, 26), MAT.concrete); wall.position.set(-16, 8, 0); site.add(wall);
@@ -443,6 +479,25 @@ const canister = new THREE.Group(); canister.position.copy(CANISTER); canister.r
 }
 // canister front cover, blown off at ignition
 const cover = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.15, 2.0), MAT.steel); scene.add(cover);
+
+// Broken coastal scree adds scale in low shots. Seeded placement keeps exports deterministic.
+{
+  const r = rng(913), count = 2400;
+  const rocks = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1,0), std(0x666b70,{roughness:0.98,metalness:0}),count);
+  const transform = new THREE.Object3D(), color = new THREE.Color();
+  let n = 0;
+  for (let i=0; i<count*3 && n<count; i++) {
+    const cruise = i%2 === 0;
+    const x = cruise ? X2 + r()*9000 : (r()-.45)*3000, z = (r()-.5)*(cruise ? 4200 : 3200);
+    const h = terrainH(x,z);
+    if (h<2 || Math.hypot(x+15,z)<180) continue;
+    const scale = 0.25 + r()**3*1.8;
+    transform.position.set(x,h+scale*0.16,z); transform.rotation.set(r()*0.4,r()*Math.PI,r()*0.35);
+    transform.scale.set(scale*(0.9+r()),scale*0.45,scale*(0.7+r())); transform.updateMatrix();
+    rocks.setMatrixAt(n,transform.matrix); color.copy(lin(0x80868b)).multiplyScalar(0.55+r()*0.5); rocks.setColorAt(n,color); n++;
+  }
+  rocks.count=n; rocks.frustumCulled=false; scene.add(rocks);
+}
 
 // ---------- exhaust plumes (additive cones along local −x) ----------
 function makePlume(len, rad, core, outer) {
@@ -472,7 +527,7 @@ function makePlume(len, rad, core, outer) {
   return { mesh, U };
 }
 const plKick = makePlume(8, 0.26, [3.2, 2.6, 1.9], [2.2, 0.9, 0.3]); plKick.mesh.position.x = -1.78; V.kicker.add(plKick.mesh);
-const plSrb = V.srbs.map(g => { const p = makePlume(7, 0.14, [3.2, 2.7, 2.0], [2.3, 1.0, 0.35]); p.mesh.position.x = -1.47; g.add(p.mesh); return p; });
+const plSrb = V.srbs.map(g => { const p = makePlume(7, 0.14, [3.2, 2.7, 2.0], [2.3, 1.0, 0.35]); p.mesh.position.x = -2.72; g.add(p.mesh); return p; });
 const plJet = makePlume(3.2, 0.15, [2.6, 1.5, 0.7], [1.6, 0.55, 0.2]); plJet.mesh.position.x = XT + 0.2; V.root.add(plJet.mesh);
 const plGlow = new THREE.PointLight(lin(0xffa860), 0, 80, 2); scene.add(plGlow);
 
@@ -498,7 +553,7 @@ const WIND = new THREE.Vector3(1.0, 0, 2.6);
     }
   };
   trail(0.25, mE.KBO, 0.012, (S, o) => local(S, XT - 1.8, 0, 0, o), 0.6, 2.6, 60);
-  for (const side of [1, -1]) trail(mE.SIGN + 0.02, mE.SBO, 0.035, (S, o) => local(S, -2.75 - 1.5, -0.13, side * (HW + 0.17 + 0.16), o), 0.55, 3.0, 70);
+  for (const g of V.srbs) trail(mE.SIGN + 0.02, mE.SBO, 0.035, (S, o) => local(S, g.userData.home.x-2.72, g.userData.home.y, g.userData.home.z, o), 0.55, 3.0, 70);
   // the reactor's exhaust carries activation gases: shown as a faint violet wake, not something visible to the eye
   for (let m = M(147); m < M(DUR); m += 0.02) {
     state(m, S); add({ m, p: local(S, XT - 0.4, 0, 0, tmp).clone(), v: S.vel.clone().multiplyScalar(0.15).add(jit(1.2)), tau: 0.5, s0: 0.25, grow: 1.6, life: 5, a: 0.5, heat: 0, tint: 1.5 });
@@ -679,8 +734,8 @@ function shot(t, m) {
     const u = ease((t - 37) / 15); rel(mix(-15, -24, u), mix(3, 5, u), mix(9, 7, u)); tgt.copy(S.pos).addScaledVector(S.F, mix(-5, 4, u)); fov = 42;
   } else if (t < 66) { // high chase looking past the vehicle along the trail
     const u = (t - 52) / 14; rel(mix(-40, -55, u), mix(11, 16, u), mix(10, 4, u)); tgt.copy(S.pos).addScaledVector(S.F, 25); fov = 44; near = 0.5;
-  } else if (t < 76) { // long lens from the launch site: the boost arc and smoke trail
-    cam.set(-35, 14, 70); tgt.copy(S.pos).lerp(_b.copy(CANISTER), 0.12);
+  } else if (t < 76) { // elevated long lens: clear of the drifting launch cloud
+    cam.set(-35, 90, 220); tgt.copy(S.pos).lerp(_b.copy(CANISTER), 0.12);
     const d = cam.distanceTo(S.pos); fov = clamp(2 * Math.atan(180 / d) / DEG, 4, 30); near = 2;
   } else if (t < 86) { // backlit underside pass
     const u = (t - 76) / 10; rel(mix(14, -4, u), -3.5, -18); tgt.copy(S.pos); fov = 36;
@@ -736,7 +791,7 @@ function pose(t, m) {
   V.nozGlow.material.color.setRGB(0.3 * ibOn + 0.02 * P / 4.3, 0.12 * ibOn + 0.005 * P / 4.3, 0.03 * ibOn);
   V.comp.rotation.x = V.turb.rotation.x = Sv.spool * Math.PI * 2 * 0.02; // strobed: real rotor speed would alias
   // glow on smoke and ground from the brightest plume
-  const glowSrc = kOn > 0 ? local(Sv, XT - 2.6, 0, 0, _b) : sOn > 0 ? local(Sv, -4.6, -0.13, 0, _b) : null;
+  const glowSrc = kOn > 0 ? local(Sv, XT - 2.6, 0, 0, _b) : sOn > 0 ? local(Sv, -2.8, -0.16, 0, _b) : null;
   plGlow.intensity = (kOn + sOn) * 6; if (glowSrc) plGlow.position.copy(glowSrc);
   // cutaway plane: wipes in, holds, wipes out; removes the half of the hull towards the camera (+z, vehicle right)
   const cut = sstep(105, 108.5, t) * (1 - sstep(131.5, 134.5, t));

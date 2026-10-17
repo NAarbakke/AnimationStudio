@@ -3,9 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Burevestnik ConOps</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Saira+Condensed:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="/src/shared/fonts/fonts.css">
 <style>
   :root {
     color-scheme: dark;
@@ -31,6 +29,7 @@
   .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
   .eyebrow { font-family: var(--cond); font-weight: 600; font-size: 13px; letter-spacing: .24em; text-transform: uppercase; color: var(--dim); }
   .mission h1 { margin: 2px 0 0; font-family: var(--cond); font-weight: 700; font-size: 30px; letter-spacing: .07em; text-transform: uppercase; line-height: 1; }
+  .location { margin-top: 9px; font-size: 11px; letter-spacing: .14em; color: #BBCBD9; text-transform: uppercase; }
   .phase { text-align: right; display: grid; gap: 4px; justify-items: end; }
   .phase b { font-family: var(--cond); font-weight: 600; font-size: 24px; letter-spacing: .1em; text-transform: uppercase; color: var(--amber); }
   .phase span { color: var(--dim); font-size: 12px; }
@@ -96,6 +95,7 @@
     <div class="mission">
       <span class="eyebrow">9M730 Burevestnik · Notional ConOps</span>
       <h1>Launch to Nuclear Cruise</h1>
+      <div class="location">Novaya Zemlya · Arctic coast</div>
     </div>
     <div class="phase">
       <span class="eyebrow">Phase</span>
@@ -137,7 +137,8 @@
   <h2>Extended endurance</h2>
   <div class="rule"></div>
   <p>9.5 m long · 5.6 m span · ~3,340 kg · Mach ~0.8 · ~4.3 MWth at cruise.<br>
-    Geometry from the paper's photogrammetry (Table 1). Timing, site and visuals are illustrative.<br>
+    Exterior after the paper's photogrammetry and Figs. 2–3.<br>
+    Novaya Zemlya coastal setting; terrain, site layout and timing are illustrative.<br>
     Source: Hecla &amp; Kemp, MIT Department of Nuclear Science and Engineering.</p>
   <p class="caveat">The paper models a possible system from open-source evidence.<br>Booster use and the transition to nuclear power remain uncertain (Fig. 4).</p>
 </div>

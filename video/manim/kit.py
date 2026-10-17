@@ -3,7 +3,6 @@ the title block, and equation rows (a plain-language caption, the equation, the 
 
 import json
 import os
-import sys
 from pathlib import Path
 
 import numpy as np
@@ -13,9 +12,8 @@ import manimgx as m
 # the showcase's palette (video/showcase.html), plus one colour per physical quantity
 BG, TEXT, AMBER, SUB, MUTED = "#06080d", "#eef2f8", "#ffb454", "#aeb8cb", "#7f8aa0"
 COOL, CORAL, GREEN, VIOLET, GOLD = "#6fb7ff", "#ff8a70", "#7ee0a1", "#c9a2ff", "#ffd27a"
-# Bahnschrift matches the showcase's titles, but it is a Windows system font: the browser player (Pyodide) has only
-# the fonts ManimGX bundles, so there the text is set in Noto Sans. KIT_FONT overrides either (to check a layout).
-FONT = os.environ.get("KIT_FONT") or ("Noto Sans" if sys.platform == "emscripten" else "Bahnschrift")
+# Bahnschrift matches the showcase's titles (a Windows system font; KIT_FONT overrides it, e.g. "Noto Sans", which ManimGX bundles)
+FONT = os.environ.get("KIT_FONT") or "Bahnschrift"
 
 # symbols coloured wherever they appear in an equation
 SYM = {"P_c": CORAL, "A_b": COOL, r"\dot m": GREEN, "c^*": VIOLET, "C_F": GOLD, "v_e": GREEN, "I_{sp}": AMBER, "I_t": AMBER}
@@ -52,7 +50,7 @@ def header(eyebrow: str, title: str) -> m.VGroup:
 
 def section(label: str, head: m.VGroup) -> m.Text:
     """The section name, top right, level with the title, or with the eyebrow when a wide title leaves no room
-    (Noto Sans, the browser's font, sets titles wider than Bahnschrift)."""
+    (a wider font, such as Noto Sans through KIT_FONT, sets titles wider than Bahnschrift)."""
     s = text(label.upper(), 26, MUTED).to_edge(m.RIGHT, buff=0.65).match_y(head[1])
     if s.get_left()[0] - head[1].get_right()[0] < 0.5:
         s.match_y(head[0])
@@ -116,7 +114,7 @@ def number(value: float, decimals: int, unit: str, color: str, size: float) -> m
 def live_panel(cells: list, rows: int, cols: int, size: float, corner: np.ndarray, buff: tuple[float, float]) -> m.VGroup:
     """A grid of live readouts 'name = value unit'. cells: (name, value(), decimals, unit, colour). The names are set
     once and stay still; only each number is redrawn per frame, from the cache (a panel redraws every frame, and
-    typesetting or copying whole groups each time is what made the films slow to make in the browser)."""
+    typesetting or copying whole groups each time is what made the films slow to render)."""
     rows_now = [m.VGroup(eq(name + "=", size, SUB, iso=[]), number(get(), d, u, c, size)).arrange(m.RIGHT, buff=0.15)
                 for name, get, d, u, c in cells]
     m.VGroup(*rows_now).arrange_in_grid(rows=rows, cols=cols, col_alignments="l" * cols, buff=buff).move_to(corner, aligned_edge=m.UL)

@@ -8,16 +8,18 @@
     "preview": "vite preview",
     "cad": "cad/.venv/Scripts/python cad/srm.py",
     "cad:watch": "cad/.venv/Scripts/python cad/srm.py --watch",
+    "cad:drone": "cad/.venv/Scripts/python cad/razorbill.py",
     "video": "vite build --base ./ --outDir ../video/site --emptyOutDir && node video/hf.js render video --output video/out/srm-hyperframes.mp4",
     "render": "node video/render.js",
     "video:conops": "npm run build && node video/conops/export.js",
     "video:conops:review": "node video/conops/review.js",
+    "video:drone": "node video/render.js drone.html?film -d 36 -o video/out/razorbill-drop.mp4",
     "stills": "node video/stills.js",
     "insert": "node video/manim/insert.js",
-    "sample": "node video/render.js index.html -d 15 -o video/clips/launch.mp4 && node video/render.js engine.html -d 8 -o video/clips/engine.mp4 && node video/render.js srm.html?film -d 9 -o video/clips/srm.mp4 && npm run insert && node video/hf.js render video -c showcase.html --output video/out/showcase.mp4"
+    "sample": "node video/render.js index.html -d 15 -o video/clips/launch.mp4 && node video/render.js engine.html -d 8 -o video/clips/engine.mp4 && node video/render.js srm.html?film -d 9 -o video/clips/srm.mp4 && npm run insert && node video/hf.js render video -c showcase.html --output video/out/showcase.mp4",
+    "video:web": "node video/web.js"
   },
   "dependencies": {
-    "manimgx": "0.1.1",
     "three": "0.147.0"
   },
   "devDependencies": {
@@ -25,6 +27,7 @@
     "@types/three": "0.147.1",
     "ffmpeg-static": "^5.3.0",
     "ffprobe-static": "^3.1.0",
+    "hyperframes": "0.8.162",
     "playwright": "^1.64.0",
     "typescript": "^5.6.0",
     "vite": "^6.0.0"

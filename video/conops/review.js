@@ -20,7 +20,7 @@ try {
   await page.evaluate(() => document.fonts.ready);
   await page.evaluate(() => window.__film.ready);
   const cdp = await page.context().newCDPSession(page);
-  const snapshots = new Set([8, 20, 28, 40, 60, 80, 97, 112, 125, 145, 154, 176]);
+  const snapshots = new Set([8, 20, 28, 40, 60, 66, 70, 74, 80, 97, 112, 125, 145, 154, 176]);
   const times = [...new Set([...Array.from({ length: 91 }, (_, i) => i * 2), ...snapshots])].sort((a,b) => a-b);
   for (const t of times) {
     await page.evaluate(t => { window.__film.seek(t); const c=document.getElementById('c'); const gl=c.getContext('webgl2') || c.getContext('webgl'); gl.finish(); }, t);

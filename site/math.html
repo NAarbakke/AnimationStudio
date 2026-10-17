@@ -3,9 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Kestrel Maths</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Saira+Condensed:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="/src/shared/fonts/fonts.css">
 <link rel="stylesheet" href="/src/shared/lab.css">
 <style>
   body { overflow: auto; font-size: 14px; }
@@ -18,34 +16,35 @@
   section h2 a:hover { text-decoration: underline; }
   section p { margin: 0 0 12px; color: var(--dim); line-height: 1.6; max-width: 80ch; }
   .film { position: relative; aspect-ratio: 16 / 9; border: 1px solid var(--line2); background: #06080d; }
-  .film manimgx-player { display: block; width: 100%; height: 100%; }
+  .film video { display: block; width: 100%; height: 100%; }
+  .film video[hidden] { display: none; }
   .film .wait { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; text-align: center; color: var(--dim);
     font-family: var(--cond); font-weight: 600; letter-spacing: .2em; text-transform: uppercase; pointer-events: none; }
   .film .wait[hidden] { display: none; }
   .note { margin-top: 10px; font-size: 12px; color: var(--dim); }
-  kbd { font-family: var(--mono); border: 1px solid var(--line2); padding: 0 4px; }
+  .film .wait code { font-family: var(--mono); text-transform: none; letter-spacing: 0; color: var(--soft); }
 </style>
 <body>
 <main>
   <header>
     <nav class="labs" aria-label="Labs"><a href="index.html">Launch</a><a href="engine.html">Liquid engine</a><a href="srm.html">Solid motor</a><a href="math.html" aria-current="page">The maths</a></nav>
     <h1>The maths behind the labs</h1>
-    <p>Every equation the two engine labs solve, written out with the labs' own numbers. These are not videos: each one is drawn live in your browser, so it stays sharp at any size and you can jump to any moment.</p>
+    <p>Every equation the two engine labs solve, written out with the labs' own numbers and animated with ManimGX.</p>
   </header>
 
   <section>
     <h2>Liquid engine <a href="engine.html">Open the lab →</a></h2>
     <p>From the combustion gas to the thrust: characteristic velocity, choked mass flow, the flow through the nozzle, exhaust velocity, thrust, specific impulse and turbopump power.</p>
-    <div class="film"><manimgx-player id="engine"></manimgx-player><div class="wait">Scroll here to load</div></div>
+    <div class="film"><video src="videos/engine-math.mp4" controls preload="metadata" playsinline></video><div class="wait" hidden><span>Not rendered yet: run <code>npm run insert</code>, then rebuild</span></div></div>
   </section>
 
   <section>
     <h2>Solid motor <a href="srm.html">Open the lab →</a></h2>
     <p>From the burning area to the thrust: the burn-rate law, the mass balance that sets the chamber pressure, the thrust coefficient, and the burn itself, with the grain burning back.</p>
-    <div class="film"><manimgx-player id="srm"></manimgx-player><div class="wait">Scroll here to load</div></div>
+    <div class="film"><video src="videos/srm-math.mp4" controls preload="metadata" playsinline></video><div class="wait" hidden><span>Not rendered yet: run <code>npm run insert</code>, then rebuild</span></div></div>
   </section>
 
-  <p class="note">Click a film or press <kbd>space</kbd> to play or pause; <kbd>?</kbd> lists the keys. The first film downloads Python and ManimGX (about 26 MB), which your browser keeps for next time. Drawn with WebGPU: Chrome or Edge 113+, or Safari 26.</p>
+  <p class="note">Rendered from the labs' own numbers; <code>npm run insert</code> remakes both films after a change to either lab.</p>
 </main>
 <script type="module" src="/src/math/main.ts"></script>
 </body>

@@ -40,6 +40,7 @@ export default defineConfig({
         srm: resolve(root, 'srm.html'),
         conops: resolve(root, 'conops.html'),
         math: resolve(root, 'math.html'),
+        drone: resolve(root, 'drone.html'),
       },
     },
   },

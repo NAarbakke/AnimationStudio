@@ -1,4 +1,6 @@
-// Makes the ManimGX inserts for the showcase edit: video/clips/srm-math.mp4 and video/clips/engine-math.mp4.
+// Makes the ManimGX films, rendered once at 4K: site/public/videos/{srm,engine}-math.mp4 at 3840x2160 for the maths page
+// (sharp full screen on any monitor), and video/clips/{srm,engine}-math.mp4 scaled to 1080p for the showcase edit
+// (both git-ignored).
 //   npm run insert              export the labs' physics, render both scenes, write the clips
 //   npm run insert -- inspect   storyboards + layout checks only (video/manim/*.storyboard.png), no video
 //   npm run insert -- engine    one scene only (srm or engine), with or without inspect
@@ -23,16 +25,19 @@ for (const name of scenes) {
   const scene = resolve(here, `${name}.py`);
   if (args.includes('inspect')) { run(manimgx, ['inspect', scene]); continue; }
   const vfr = resolve(here, `out/${name}-vfr.mp4`), out = resolve(here, `../clips/${name}-math.mp4`);
-  mkdirSync(dirname(vfr), { recursive: true });
-  mkdirSync(dirname(out), { recursive: true });
-  run(manimgx, ['render', scene, '-o', vfr, '--fps', '30', '--crf', '14']);
+  const site = resolve(here, `../../site/public/videos/${name}-math.mp4`);
+  for (const f of [vfr, out, site]) mkdirSync(dirname(f), { recursive: true });
+  run(manimgx, ['render', scene, '-o', vfr, '-r', '3840x2160', '--fps', '30', '--crf', '12']);
   const duration = execFileSync(process.env.FFPROBE_PATH || ffprobeStatic.path, [
     '-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', vfr,
   ]).toString().trim();
+  const cfr = 'fps=30,tpad=stop_mode=clone:stop=-1';
   run(process.env.FFMPEG_PATH || ffmpegStatic, [
-    '-y', '-loglevel', 'error', '-i', vfr, '-vf', 'fps=30,tpad=stop_mode=clone:stop=-1', '-t', duration,
-    '-c:v', 'libx264', '-crf', '18', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', out,
+    // -t is per output: without it on both, the clone-padding repeats the last frame for ever
+    '-y', '-loglevel', 'error', '-i', vfr,
+    '-t', duration, '-vf', cfr, '-c:v', 'libx264', '-preset', 'slow', '-crf', '18', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', site,
+    '-t', duration, '-vf', `${cfr},scale=1920:1080:flags=lanczos`, '-c:v', 'libx264', '-crf', '18', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', out,
   ]);
   rmSync(vfr);
-  console.log(`${out}: ${Number(duration).toFixed(2)} s, constant 30 fps`);
+  console.log(`${out} (+ ${site}): ${Number(duration).toFixed(2)} s, constant 30 fps`);
 }

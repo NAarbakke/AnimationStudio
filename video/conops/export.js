@@ -39,7 +39,7 @@ if (!process.argv.includes('--mux-only')) {
   const resume = process.argv.includes('--resume');
   if (!resume) cpSync(resolve('dist'), siteRoot, { recursive: true });
   const hash = createHash('sha256');
-  for (const f of ['site/conops.html', 'site/src/conops/main.js', 'site/src/shared/stage.ts', 'video/render.js']) hash.update(readFileSync(f));
+  for (const f of ['site/conops.html', 'site/src/conops/main.js', 'site/src/conops/arctic.js', 'site/src/shared/stage.ts', 'video/render.js']) hash.update(readFileSync(f));
   const freshParts = resolve('video/out/conops-parts-' + hash.digest('hex').slice(0, 10));
   const saved = resume ? requireSavedParts() : null;
   const parts = saved ?? freshParts;

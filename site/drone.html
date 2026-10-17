@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Razorbill Drop</title>
+<link rel="stylesheet" href="/src/shared/fonts/fonts.css">
+<style>
+  :root {
+    color-scheme: dark;
+    --ink: #F4F1EA;
+    --dim: #DCD6CA;
+    --amber: #FFB35C;
+    --mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+    --cond: 'Saira Condensed', 'Arial Narrow', 'Roboto Condensed', sans-serif;
+  }
+  html, body { height: 100%; margin: 0; background: #000; color: var(--ink); overflow: hidden; }
+  #c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  #err[hidden] { display: none; }
+  #err { position: fixed; inset: 0; display: grid; place-items: center; padding-inline: 24px; text-align: center; font-family: var(--mono); color: var(--dim); }
+  .title { position: fixed; left: 64px; bottom: 72px; pointer-events: none; opacity: 0; text-shadow: 0 2px 18px rgba(0,0,0,.55); }
+  .title .k { font-family: var(--cond); font-weight: 600; font-size: 17px; letter-spacing: .32em; text-transform: uppercase; color: var(--dim); }
+  .title h1 { margin: 6px 0 0; font-family: var(--cond); font-weight: 700; font-size: 76px; letter-spacing: .1em; text-transform: uppercase; line-height: 1; }
+  .title .rule { width: 96px; height: 2px; margin-top: 14px; background: var(--amber); }
+  .title p { margin: 12px 0 0; font-family: var(--mono); font-size: 14px; color: var(--dim); }
+  #end { left: 50%; bottom: auto; top: 50%; transform: translate(-50%, -50%); text-align: center; }
+  #end .rule { margin-inline: auto; }
+  #fade { position: fixed; inset: 0; background: #000; pointer-events: none; }
+</style>
+
+<canvas id="c" aria-label="3D animation of the Razorbill farm drone flying over a crop field and dropping an arrow into it"></canvas>
+<div id="err" hidden>WebGL is not available in this browser, so the animation cannot render.</div>
+<div class="title" id="intro">
+  <span class="k">Farm drone · payload drop</span>
+  <h1>Razorbill</h1>
+  <div class="rule"></div>
+</div>
+<div class="title" id="end">
+  <span class="k">Payload on target</span>
+  <h1>Razorbill</h1>
+  <div class="rule"></div>
+  <p>Model: 2000_Razorbill_farm_drone.STEP</p>
+</div>
+<div id="fade"></div>
+
+<script type="module" src="/src/drone/main.js"></script>

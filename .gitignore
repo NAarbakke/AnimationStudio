@@ -4,6 +4,8 @@ __pycache__/
 # Python environments (recreate with pip, see README)
 cad/.venv/
 video/manim/.venv/
+tools/pdf/.venv/
+reference/rendered/
 # scratch space for one-off experiments; scripts never write here
 tmp/
 
@@ -14,6 +16,8 @@ video/snapshots/
 video/clips/
 video/out/
 video/.hyperframes/
-# ManimGX: the storyboards inspect/render write (the exported srm.json/engine.json are kept: math.html builds from them)
+# ManimGX: the storyboards inspect/render write (the exported srm.json/engine.json are kept, so the scenes render as committed)
 video/**/*.storyboard*.png
 video/manim/out/
+# the maths page's films, copied there by npm run insert
+site/public/videos/
