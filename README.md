@@ -10,10 +10,10 @@ it: code-CAD that feeds the pages their models, and scripts that turn the pages 
 | Liquid engine | `/engine.html` | `src/engine/` | Gas-generator cycle lab |
 | Solid motor | `/srm.html` | `src/srm/` | Solid-motor lab, burn-back from your own CAD |
 | The maths | `/math.html` | `src/math/` + `video/manim/` | The labs' equations as ManimGX films (rendered videos, see below) |
-| Burevestnik ConOps | `/conops.html` | `src/conops/` | 3-minute notional concept-of-operations film (not in the tab bar) |
-| Razorbill drop | `/drone.html` | `src/drone/` | 36 s film: the Razorbill farm drone flies over a crop field and drops an arrow into a furrow (not in the tab bar) |
+| Burevestnik ConOps | `/conops.html` | `src/conops/` | 3-minute notional concept-of-operations film (the bar hides in `?film`) |
+| Razorbill drop | `/drone.html` | `src/drone/` | 36 s film: the Razorbill farm drone flies over a crop field and drops an arrow into a furrow (the bar hides in `?film`) |
 
-The first four are linked by the tabs in the top-left corner; the two films are opened by URL. Nothing is published:
+All six are linked by the tabs in the top-left corner. Nothing is published:
 the site runs from `npm run dev`, or from `dist/` on any static file server.
 
 ```bash

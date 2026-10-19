@@ -589,6 +589,7 @@ const qs = new URLSearchParams(location.search);
 let ft = Number(qs.get('t') || 0);
 window.__dbg = { W, W_REL, W_HIT, IMPACT, FALL, state, HOV };
 window.__film = { ready: loaded, seek: t => render(t), duration: DUR };
+if (!qs.has('film')) $('labs').hidden = false;
 loaded.then(() => {
   if (qs.has('film')) return render(ft);
   let last = performance.now(), paused = false;

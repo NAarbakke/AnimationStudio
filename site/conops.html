@@ -82,6 +82,14 @@
   .card .caveat { max-width: 850px; padding-top: 16px; border-top: 1px solid rgba(234,240,247,.3); font-size: 14px; color: #FFE0B5; }
   #marker { position: fixed; left: 0; top: 0; width: 34px; height: 34px; margin: -17px 0 0 -17px; border: 1.5px solid var(--amber); border-radius: 50%; opacity: 0; pointer-events: none; }
   #marker span { position: absolute; left: 44px; top: 7px; font-family: var(--cond); font-weight: 600; font-size: 14px; letter-spacing: .18em; color: var(--amber); white-space: nowrap; text-transform: uppercase; }
+  /* lab switcher (as in shared/lab.css); hidden in ?film so the render stays clean */
+  .labs { display: flex; width: max-content; pointer-events: auto; border: 1px solid var(--line); background: var(--glass); margin-bottom: 10px; text-shadow: none; }
+  .labs[hidden] { display: none; }
+  .labs a { font-family: var(--cond); font-weight: 600; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--dim); text-decoration: none; padding: 5px 10px; }
+  .labs a + a { border-left: 1px solid var(--line); }
+  .labs a:hover { color: var(--ink); }
+  .labs a[aria-current="page"] { background: var(--ink); color: #05080e; }
+  .labs a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 </style>
 
 <canvas id="c" aria-label="3D animation of the notional Burevestnik concept of operations, from canister launch to nuclear cruise"></canvas>
@@ -93,6 +101,7 @@
 <div class="hud" id="hud">
   <div class="top">
     <div class="mission">
+      <nav class="labs" aria-label="Labs" id="labs" hidden><a href="index.html">Launch</a><a href="engine.html">Liquid engine</a><a href="srm.html">Solid motor</a><a href="math.html">The maths</a><a href="conops.html" aria-current="page">Burevestnik</a><a href="drone.html">Razorbill</a></nav>
       <span class="eyebrow">9M730 Burevestnik · Notional ConOps</span>
       <h1>Launch to Nuclear Cruise</h1>
       <div class="location">Novaya Zemlya · Arctic coast</div>

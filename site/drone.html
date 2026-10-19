@@ -25,6 +25,14 @@
   #end { left: 50%; bottom: auto; top: 50%; transform: translate(-50%, -50%); text-align: center; }
   #end .rule { margin-inline: auto; }
   #fade { position: fixed; inset: 0; background: #000; pointer-events: none; }
+  /* lab switcher (as in shared/lab.css); hidden in ?film so the render stays clean */
+  .labs { position: fixed; left: 20px; top: 18px; z-index: 1; display: flex; border: 1px solid rgba(244, 241, 234, .28); background: rgba(5, 8, 14, .66); }
+  .labs[hidden] { display: none; }
+  .labs a { font-family: var(--cond); font-weight: 600; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--dim); text-decoration: none; padding: 5px 10px; }
+  .labs a + a { border-left: 1px solid rgba(244, 241, 234, .28); }
+  .labs a:hover { color: var(--ink); }
+  .labs a[aria-current="page"] { background: var(--ink); color: #05080e; }
+  .labs a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 </style>
 
 <canvas id="c" aria-label="3D animation of the Razorbill farm drone flying over a crop field and dropping an arrow into it"></canvas>
@@ -41,5 +49,6 @@
   <p>Model: 2000_Razorbill_farm_drone.STEP</p>
 </div>
 <div id="fade"></div>
+<nav class="labs" aria-label="Labs" id="labs" hidden><a href="index.html">Launch</a><a href="engine.html">Liquid engine</a><a href="srm.html">Solid motor</a><a href="math.html">The maths</a><a href="conops.html">Burevestnik</a><a href="drone.html" aria-current="page">Razorbill</a></nav>
 
 <script type="module" src="/src/drone/main.js"></script>

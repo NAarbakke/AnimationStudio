@@ -861,6 +861,7 @@ window.__film = { ready: Promise.resolve(), seek: t => render(t), duration: DUR 
 if (!qs.has('film')) {
   let last = performance.now(), paused = false;
   addEventListener('keydown', e => { if (e.code === 'Space') paused = !paused; if (e.code === 'ArrowRight') ft += 5; if (e.code === 'ArrowLeft') ft = Math.max(0, ft - 5); });
+  $('labs').hidden = false;
   $('tl').style.pointerEvents = 'auto';
   $('tl').addEventListener('click', e => { const r = $('tl').getBoundingClientRect(); ft = clamp((e.clientX - r.left) / r.width, 0, 1) * DUR; });
   const loop = now => { const dt = Math.min(0.1, (now - last) / 1000); last = now; if (!paused) ft = (ft + dt) % DUR; render(ft); requestAnimationFrame(loop); };
