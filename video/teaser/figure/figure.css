@@ -1,0 +1,27 @@
+@font-face { font-family: "Plex"; src: url("ibm-plex-mono-400-latin.woff2") format("woff2"); }
+html, body { margin: 0; height: 100%; background: #030406; overflow: hidden; }
+.iso {
+  --anatomy-paper: #06070a; --anatomy-face: #0a0c11; --anatomy-top: #0c0e13;
+  --anatomy-shade-0: #050609; --anatomy-shade-1: #07080c; --anatomy-shade-2: #090b10; --anatomy-shade-3: #0b0d13;
+  --anatomy-lit-top: #161a23; --anatomy-lit-shade: #0e1118;
+  --anatomy-hi: #d9e2f2; --anatomy-mid: #7f8ca3; --anatomy-lo: #47505f; --anatomy-faint: #2c323d; --anatomy-lit: #ffffff;
+  --anatomy-dot: #e6ecf7; --anatomy-red: #ff6a1f; --anatomy-weight: 1.05px;
+}
+#film { position: fixed; inset: 0; width: 100%; height: 100%; }
+#film path, #film circle { vector-effect: non-scaling-stroke; }
+/* the plate stays near-black: the drawing is only seen where the slit has been, or against the glow.
+   A <use> copy can't be reached by descendant selectors, but custom properties inherit into it, so the layers differ by variables. */
+#art .iso-line { stroke-opacity: var(--line, .3); }
+#art .iso-dots circle { opacity: var(--dot, .08); }
+#art .tape { fill: var(--tape, #23272e); }
+#art .ember > .iso-shade, #art .ember > .iso-top, #art .ember > .iso-fill { fill: var(--ember, #160802); }
+#art .ember > .iso-line { stroke-opacity: var(--line, .3); }
+#lit { --line: 1; --dot: .9; --tape: #f2f6ff; --ember: #7a2506;
+  --anatomy-top: #2a3140; --anatomy-shade-0: #0d1016; --anatomy-shade-1: #151924; --anatomy-shade-2: #1e2431; --anatomy-shade-3: #272e3d; --anatomy-lit-top: #4a5468; --anatomy-lit-shade: #2c3442; --anatomy-paper: #0a0c11; }
+#wake { --line: .8; --dot: .4; --tape: #5a6270; --ember: #2e0f03; }
+.spin-disc { fill: #cdd8ee; fill-opacity: 0; stroke: none; }
+.corner { position: fixed; font: 400 15px "Plex", monospace; letter-spacing: .14em; color: #6f7a8d; text-transform: uppercase; opacity: 0; }
+.corner[data-c="tl"] { top: 44px; left: 56px; }
+.corner[data-c="tr"] { top: 44px; right: 56px; }
+.corner[data-c="br"] { bottom: 44px; right: 56px; font-variant-numeric: tabular-nums; }
+#black { position: fixed; inset: 0; background: #000; opacity: 0; }

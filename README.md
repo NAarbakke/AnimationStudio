@@ -280,6 +280,18 @@ and all colour in the vertices. Run `npm run blender -- vegetation.py` after cha
 in `vegetation.glb`, using `crop_hero_N` round the rod's landing point and `crop_field_N` elsewhere, `tree_N` on the hedges and
 `tree_far_N` beyond them.
 
+### Razorbill teasers
+
+Two dark 21 s launch teasers (1080p, 24 fps) with the same titles and soundtrack, cut to the same beats (3.75, 7.5, 11.5 and 16.5 s). The words are `TITLES` in `video/teaser/finish.js`, the sound is synthesised by `video/teaser/audio.py` (needs numpy on `python`, or set `PYTHON`).
+
+```bash
+npm run video:teaser:shoot     # video/out/razorbill-teaser-shoot.mp4: the real airframe path-traced in Cycles
+npm run video:teaser:figure    # video/out/razorbill-teaser-figure.mp4: an isometric illustration drawn with the Anatomy kit
+node video/teaser/finish.js shoot --reuse    # keep the base picture, redo only grade, titles and audio
+```
+
+`blender/razorbill_teaser.py` writes every second frame to `video/out/teaser-frames/` and skips frames already there (82 minutes on the i7-10610U); `finish.js` interpolates each shot on its own to 24 fps. `video/teaser/figure/build.mjs` draws the plate from sizes measured on `razorbill.glb` (the shapes are drawn from those sizes, not traced) and `live.js` is its film clock. Anatomy is installed as a project skill in `.claude/skills/anatomy` (MIT, upstream commit `1482e84`); the figure imports its kit from there.
+
 ## Not done yet
 
 - **CAD import for the liquid engine.** The same pattern applies: slice a `chamber`/`nozzle` part for the
