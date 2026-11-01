@@ -11,7 +11,7 @@ it: code-CAD that feeds the pages their models, and scripts that turn the pages 
 | Solid motor | `/srm.html` | `src/srm/` | Solid-motor lab, burn-back from your own CAD |
 | The maths | `/math.html` | `src/math/` + `video/manim/` | The labs' equations as ManimGX films (rendered videos, see below) |
 | Burevestnik ConOps | `/conops.html` | `src/conops/` | 3-minute notional concept-of-operations film (the bar hides in `?film`) |
-| Razorbill drop | `/drone.html` | `src/drone/` | 36 s film: the Razorbill farm drone flies over a crop field and drops an arrow into a furrow (the bar hides in `?film`) |
+| Razorbill drop | `/drone.html` | `src/drone/` | 39 s film, Operation SKYFALL: the Razorbill farm drone drops its sensor rod into a crop field, larvae climb the rod and each crossing of the sensor strip spikes a signal plot (the bar hides in `?film`) |
 
 All six are linked by the tabs in the top-left corner. Nothing is published:
 the site runs from `npm run dev`, or from `dist/` on any static file server.
@@ -35,14 +35,19 @@ site/                the website (Vite root): everything here ends up in dist/
     math/            maths page: shows a hint where a film has not been rendered yet
     conops/          Burevestnik ConOps film (main.js; arctic.js: the Novaya Zemlya terrain shaders)
     drone/           Razorbill drop film
-  public/models/     CAD exports the site loads, served as-is at /models/ (srm.glb, srm.json, razorbill.glb);
-                     committed, so a fresh checkout runs without the CAD venv
+  public/models/     models the site loads, served as-is at /models/ (srm.glb, srm.json, razorbill.glb, vegetation.glb);
+                     committed, so a fresh checkout runs without the CAD venv or Blender
   public/videos/     the maths page's films, put there by `npm run insert` (git-ignored)
+blender/
+  razorbill.py       SolidWorks GLB → flat, named-part GLB for the drone film (site/public/models/razorbill.glb)
+  vegetation.py      trees and maize for the drone film, source of site/public/models/vegetation.glb
+  burevestnik.py     missile exterior, launch site and rocks for the ConOps film, source of site/public/models/burevestnik.glb
+  kit.py             mesh builder, AO bake and GLB export shared by the two above
+  run.js             runs a script from this folder in headless Blender (5.1 or newer)
 cad/
   srm.py             default solid motor (build123d), the source of site/public/models/srm.glb
-  razorbill.py       STEP → named-part GLB for the drone film (site/public/models/razorbill.glb)
   requirements.txt   pinned Python packages for cad/.venv
-  imports/           third-party CAD received as-is (STEP), converted by the scripts above
+  imports/           third-party CAD received as-is (STEP, GLB)
 video/
   render.js          page → MP4 (Playwright + ffmpeg); also used as a module
   web.js             streaming copies of finished videos
@@ -126,7 +131,8 @@ that everything runs offline. The fonts (IBM Plex Mono, Saira Condensed) are in 
 | --- | --- |
 | `dev` / `build` / `preview` | Vite dev server, production build to `dist/`, serve the build |
 | `cad` / `cad:watch` | Export `cad/srm.py` to `site/public/models/` once / on every save |
-| `cad:drone` | Convert the Razorbill STEP to `site/public/models/razorbill.glb` |
+| `cad:drone` | Convert the Razorbill GLB to `site/public/models/razorbill.glb` (needs Blender) |
+| `blender -- vegetation.py` | Rebuild `site/public/models/vegetation.glb` in headless Blender (`BLENDER` overrides the path to `blender.exe`) |
 | `render -- <page> [opts]` | Render any page to MP4 (see below) |
 | `stills -- <page> <t>…` | PNG frames from a film-mode page at the given seconds, to `video/out/stills/` |
 | `video` | Solid-motor film through HyperFrames → `video/out/srm-hyperframes.mp4` |
@@ -134,7 +140,7 @@ that everything runs offline. The fonts (IBM Plex Mono, Saira Condensed) are in 
 | `sample` | Clip every page, make the inserts, cut the showcase → `video/out/showcase.mp4` |
 | `video:conops` | Build, then the full ConOps delivery → `video/out/burevestnik-conops.mp4` |
 | `video:conops:review` | Sample the ConOps timeline and check cutaway labels → `video/out/conops-review/` |
-| `video:drone` | Razorbill drop film → `video/out/razorbill-drop.mp4` (36 s, 1080p, 30 fps) |
+| `video:drone` | Operation SKYFALL film → `video/out/operation-skyfall.mp4` (39 s, 1080p, 30 fps) |
 | `video:web -- [files] [--crf n]` | Streaming copies of finished videos → `video/out/web/` (see below) |
 
 ## Common tasks
@@ -144,7 +150,7 @@ that everything runs offline. The fonts (IBM Plex Mono, Saira Condensed) are in 
 | Work on a page | `npm run dev`, open http://localhost:5173 |
 | Change a lab, keep the maths page in step | edit the lab, then `npm run insert` and `npm run build` |
 | Change the solid motor's CAD | `npm run cad:watch`, pick **CAD** on the Solid motor page |
-| Replace the drone model | new STEP in `cad/imports/`, adjust `cad/razorbill.py`, `npm run cad:drone` |
+| Replace the drone model | new GLB in `cad/imports/`, adjust `blender/razorbill.py`, `npm run cad:drone` |
 | Hand over the site | `npm run insert && npm run build`, copy `dist/` to any static file server (opening the files directly does not work) |
 | Make and share a film | its `video:*` script (or `render`), then `npm run video:web`, share from `video/out/web/` |
 | Check a few frames of a film | `npm run stills -- "<page>?film" <seconds>…` |
@@ -224,6 +230,11 @@ surveyed site. See [visual reference notes](reference/conops-visual-references.m
 The [project PDF tools](tools/pdf/README.md) extract text and render reference
 pages using a persistent environment in `tools/pdf/.venv/`.
 
+The exterior, launch site and rocks come from `blender/burevestnik.py`: procedural meshes with ambient occlusion baked in
+Cycles. Run `npm run blender -- burevestnik.py` after changing it. The shell keeps the film's outer dimensions and its colour comes from
+the materials in `site/src/conops/main.js`; the vertices only carry AO, seams and weathering. The launcher, shelter, containers and
+other site furniture are invented scene dressing. The cutaway internals are still built in `main.js`.
+
 ```bash
 npm run video:conops:review   # sample the timeline, check cutaway label placement
 npm run video:conops          # video/out/burevestnik-conops.mp4: 3:00, 1080p, 30 fps, ambient audio
@@ -245,20 +256,29 @@ to wherever they are shared.
 
 ### Razorbill drop
 
-`cad/razorbill.py` imports `cad/imports/2000_Razorbill_farm_drone.STEP` (SolidWorks, AP203: no part names or colours)
-and names the 31 solids by their order in the file (`hub`, `battery`, `release_*`, `arm_N`, `leg_N`, `motor_N`,
-`prop_N`); the film colours parts by those prefixes, spins `prop_N` about `motor_N` and opens `release_latch` for the
-drop. A re-export as STEP AP214, or a GLB from SolidWorks/Visualize, would carry the real part names and appearances;
-keep the prefixes (or map them in `razorbill.py`) and the film picks it up.
+`blender/razorbill.py` imports the SolidWorks GLB `cad/imports/2000_Razorbill_farm_drone.glb`, flattens its assembly
+into one frame and renames the parts by their SolidWorks part numbers (`hub`, `battery`, `arm_N`, `leg_N`, `motor_N`,
+`prop_N`, `release_*`, `rod_*`). The film colours parts by those names and spins `prop_N` about `motor_N`. For the drop
+it turns `release_hook` and `release_horn` together, shifts `release_lever` between them, and flies the `rod_*` parts
+on their own. The pivots are estimated from the geometry, since the GLB has no motion data; they are `HOOK_PIVOT` and
+the horn's pivot in `site/src/drone/main.js`. The STEP (AP214) next to it is the same assembly, kept as the exact
+source geometry.
 
 ```bash
-npm run cad:drone      # STEP → site/public/models/razorbill.glb
-npm run video:drone    # video/out/razorbill-drop.mp4
-npm run stills -- "drone.html?film" 7 17 23 27   # check shots
+npm run cad:drone      # GLB → site/public/models/razorbill.glb
+npm run video:drone    # video/out/operation-skyfall.mp4
+npm run stills -- "drone.html?film" 7 19 23.5 32   # check shots
 ```
 
-Close shots carry most of the film (chase, belly, release, furrow strike, arrow orbit); three wide shots open it,
-sit mid-approach (overhead) and close it. The drop plays at 0.4× speed.
+A wide shot carries the title, then one long scan (wide, in to the rod's nose, up the rod, the airframe, back to the fishhook) leads to the release (0.4× speed),
+the fall and a cut to the strike. The crop fades back in a lane toward the camera (`REVEAL`) and four larvae climb the
+rod. The plot is computed from their positions against the spiral strip `rod_tape` (12.5 mm wide, 60 mm pitch), so each
+spike lines up with a crossing; its shape and height are illustrative, not sensor data.
+
+The trees and maize come from `blender/vegetation.py`: seeded procedural meshes with ambient occlusion baked in Cycles
+and all colour in the vertices. Run `npm run blender -- vegetation.py` after changing it; the film instances the nodes
+in `vegetation.glb`, using `crop_hero_N` round the rod's landing point and `crop_field_N` elsewhere, `tree_N` on the hedges and
+`tree_far_N` beyond them.
 
 ## Not done yet
 

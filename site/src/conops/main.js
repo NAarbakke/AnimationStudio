@@ -2,7 +2,9 @@
 // nuclear cruise. Source: Hecla & Kemp (MIT), "Modeling the Performance of the Burevestnik", §3.1.1 and Fig. 4.
 // World units are metres: +x is the launch heading, +y up, +z to the vehicle's right. Everything is a pure function
 // of film time t, so any frame can be rendered on its own (conops.html?film for video/render.js, ?t=120 to preview).
+// Exterior, launch site and rocks: blender/burevestnik.py makes /models/burevestnik.glb. The cutaway internals are built here.
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { createStage, lin, NOISE } from '../shared/stage';
 import { arcticHeight, TERRAIN_GLSL } from './arctic.js';
 
@@ -154,6 +156,7 @@ sky.renderOrder = -10; sky.frustumCulled = false; scene.add(sky);
     vertexShader: TERRAIN_GLSL + `uniform vec2 uCenter; varying vec3 vW;
       void main(){ vec2 p = position.xz + uCenter; float h = max(terrainH(p), 0.0); vW = vec3(p.x, h, p.y); gl_Position = projectionMatrix*viewMatrix*vec4(vW, 1.0); }`,
     fragmentShader: NOISE + TERRAIN_GLSL + SKY_GLSL + `uniform float uTime; varying vec3 vW;
+      float box2(vec2 p, vec2 half_){ vec2 d = abs(p) - half_; return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0); }
       void main(){
         vec2 p = vW.xz; float d = length(cameraPosition - vW);
         float h = terrainH(p);
@@ -193,6 +196,10 @@ sky.renderOrder = -10; sky.frustumCulled = false; scene.add(sky);
           float road = smoothstep(3.5, 3.0, abs(p.y - 4.0*sin(p.x*0.004))) * step(p.x, -26.0);
           float joints = max(1.0-smoothstep(0.02,0.07,abs(sin(p.x*0.65))),1.0-smoothstep(0.02,0.07,abs(sin(p.y*0.65))));
           col = mix(col, vec3(0.23, 0.25, 0.26)*(0.9 + 0.1*n)*(1.0-joints*0.25), max(pad, road));
+          // contact shadow round what stands on the apron (the terrain takes no shadow map)
+          float occ = min(min(box2(p - vec2(-0.5, 0.0), vec2(7.2, 2.8)), box2(p - vec2(-34.0, 0.0), vec2(9.2, 4.8))), box2(p - vec2(-16.0, 0.0), vec2(1.1, 13.0)));
+          occ = min(occ, min(box2(p - vec2(-70.0, 40.0), vec2(7.1, 5.1)), box2(p - vec2(-60.0, -45.0), vec2(4.1, 4.1))));
+          col *= mix(0.42, 1.0, smoothstep(0.0, 3.0, occ));
           float lit = max(dot(N, uSun), 0.0);
           col *= vec3(0.86, 0.92, 1.0)*lit*1.3 + vec3(0.49, 0.58, 0.70)*(0.5 + 0.25*N.y);
         }
@@ -206,15 +213,14 @@ sky.renderOrder = -10; sky.frustumCulled = false; scene.add(sky);
 const clip = new THREE.Plane(new THREE.Vector3(0, 0, -1), 1e6); // cutaway plane, world space, set each frame
 const std = (hex, o = {}) => new (o.specularIntensity === undefined ? THREE.MeshStandardMaterial : THREE.MeshPhysicalMaterial)({ color: lin(hex), roughness: 0.55, metalness: 0.25, envMapIntensity: 0.6, ...o });
 const MAT = {
-  skin: std(0xa3161d, { roughness: 0.58, metalness: 0.05, specularIntensity: 0.25, envMapIntensity: 0.35, side: THREE.DoubleSide, clippingPlanes: [clip], clipShadows: true }),
-  dark: std(0x2a2c29, { roughness: 0.7 }),
-  wing: std(0xa01820, { roughness: 0.58, metalness: 0.05, specularIntensity: 0.25, envMapIntensity: 0.35 }),
-  booster: std(0xbfc2c3, { roughness: 0.4, metalness: 0.48 }),
-  kicker: std(0x3b3e38),
+  skin: std(0xa3161d, { roughness: 0.58, metalness: 0.05, specularIntensity: 0.25, envMapIntensity: 0.35, side: THREE.DoubleSide, clippingPlanes: [clip], clipShadows: true, vertexColors: true }),
+  wing: std(0xa01820, { roughness: 0.58, metalness: 0.05, specularIntensity: 0.25, envMapIntensity: 0.35, vertexColors: true }),
+  booster: std(0xbfc2c3, { roughness: 0.4, metalness: 0.48, vertexColors: true }),
+  kicker: std(0x3b3e38, { vertexColors: true }),
+  site: new THREE.MeshStandardMaterial({ roughness: 0.74, metalness: 0.12, envMapIntensity: 0.5, vertexColors: true }),
+  rock: new THREE.MeshStandardMaterial({ roughness: 0.96, metalness: 0, envMapIntensity: 0.4, vertexColors: true, flatShading: true }),
   nozzle: std(0x2f2b28, { metalness: 0.7, roughness: 0.4, side: THREE.DoubleSide, clippingPlanes: [clip] }),
-  canister: std(0x454e49, { roughness: 0.8, side: THREE.DoubleSide }),
   steel: std(0x50544c, { metalness: 0.5, roughness: 0.5 }),
-  concrete: std(0x8c8980, { roughness: 0.95, metalness: 0 }),
   // cutaway internals
   duct: std(0xa9adb2, { metalness: 0.8, roughness: 0.35, side: THREE.DoubleSide, clippingPlanes: [clip] }),
   blade: std(0xc6c9cc, { metalness: 0.9, roughness: 0.3, clippingPlanes: [clip] }),
@@ -238,72 +244,15 @@ for (const mat of [MAT.skin, MAT.wing]) {
 }
 
 // ---------- vehicle (Table 1: 9.51 m, 0.846 × 0.561 m section, 5.6 m span, 14.8° sweep) ----------
-const LEN = 9.51, HW = 0.423, HH = 0.2805, XN = LEN / 2, XT = -LEN / 2;
-// Exterior silhouette after Figures 2–3: squared body, blunt nose and deeper,
-// angular rear fairing. These are visual contours, not engineering geometry.
-const SHELL = [
-  [XT, 0.19, -0.18, HW*0.80], [XT+0.5, 0.21, -0.23, HW*0.88],
-  [-2.1, 0.33, -0.43, HW], [-1.6, 0.33, -0.43, HW], [-1.35, HH, -HH, HW],
-  [XN-1.15, HH, -HH, HW], [XN-0.7, 0.24, -0.25, HW*0.86],
-  [XN-0.28, 0.13, -0.16, HW*0.48], [XN-0.08, 0.045, -0.075, HW*0.20], [XN, -0.015, -0.015, 0],
-];
-function shellPoint(x, angle, offset = 1) {
-  let i = 1; while (i < SHELL.length-1 && x > SHELL[i][0]) i++;
-  const a = SHELL[i-1], b = SHELL[i], u = clamp((x-a[0])/(b[0]-a[0]),0,1);
-  const top = mix(a[1],b[1],u), bottom = mix(a[2],b[2],u), width = mix(a[3],b[3],u);
-  const sn = Math.sin(angle), cs = Math.cos(angle);
-  return new THREE.Vector3(x, (top+bottom)/2 + Math.sign(sn)*Math.abs(sn)**0.32*(top-bottom)/2*offset, Math.sign(cs)*Math.abs(cs)**0.32*width*offset);
-}
-function fuselageGeo() {
-  const NA = 64, pos = [], idx = [], stations = [];
-  for (let i = 1; i < SHELL.length; i++) {
-    const a = SHELL[i-1][0], b = SHELL[i][0], n = Math.ceil((b-a)*14);
-    for (let j = 0; j < n; j++) stations.push(mix(a,b,j/n));
-  }
-  stations.push(XN);
-  const NX = stations.length-1;
-  for (const x of stations) for (let a = 0; a < NA; a++) pos.push(...shellPoint(x, a/NA*Math.PI*2).toArray());
-  for (let i = 0; i < NX; i++) for (let a = 0; a < NA; a++) {
-    const p = i * NA + a, q = i * NA + ((a + 1) % NA);
-    idx.push(p, p + NA, q, q, p + NA, q + NA);
-  }
-  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
-  return g;
-}
-// thin lifting surface: planform in (x, s) extruded through its thickness; s → +z (or −z when mirrored)
-function surfaceGeo(pts, t, mirror = 1) {
-  const sh = new THREE.Shape(pts.map(([x, s]) => new THREE.Vector2(x, s * mirror)));
-  const g = new THREE.ExtrudeGeometry(sh, { depth: t, bevelEnabled: true, bevelThickness: t * 0.4, bevelSize: t * 0.6, bevelSegments: 2 });
-  g.rotateX(Math.PI / 2); g.translate(0, t / 2, 0); g.computeVertexNormals();
-  return g;
-}
+const LEN = 9.51, HW = 0.423, HH = 0.2805, XT = -LEN / 2;
+// Exterior meshes come from blender/burevestnik.py; each is hung on its node once the GLB has loaded.
+const PARTS = [];
+const part = (name, material) => { const mesh = new THREE.Mesh(new THREE.BufferGeometry(), material); mesh.name = name; PARTS.push(mesh); return mesh; };
 const alongX = g => g.rotateZ(-Math.PI / 2); // three.js cylinders run along +y; ours run along +x
 
 function buildMissile() {
   const root = new THREE.Group();
-  const skin = new THREE.Mesh(fuselageGeo(), MAT.skin); root.add(skin);
-  // Fine seams follow the actual outer skin and participate in the cutaway clip.
-  const seamMat = new THREE.LineBasicMaterial({ color: lin(0x4b151b), transparent: true, opacity: 0.7, clippingPlanes: [clip] });
-  const details = new THREE.Group(); details.name = 'Exterior panel seams'; root.add(details);
-  for (const x of [3.6, 2.8, 1.15, -0.65, -1.35, -1.6, -2.1, -3.45, -4.35]) {
-    const pts = Array.from({length:80}, (_,i) => shellPoint(x,i/80*Math.PI*2,1.005));
-    details.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), seamMat));
-  }
-  for (const angle of [0.3, Math.PI-0.3, Math.PI+0.3, 2*Math.PI-0.3]) {
-    const pts = Array.from({length:100}, (_,i) => shellPoint(mix(XT+0.06,XN-0.25,i/99),angle,1.006));
-    details.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),seamMat));
-  }
-  const boltMat = std(0x8a7875, { roughness:0.65, clippingPlanes:[clip] });
-  const bolts = new THREE.InstancedMesh(new THREE.SphereGeometry(0.008,6,4),boltMat,128);
-  let boltIndex = 0;
-  for (const x of [3.58,2.78,1.13,-0.67,-1.62,-2.12,-3.47,-4.37]) for(let j=0;j<16;j++) {
-    const p = shellPoint(x,(j+0.5)/16*Math.PI*2,1.01); _m4.makeTranslation(p.x,p.y,p.z); bolts.setMatrixAt(boltIndex++,_m4);
-  }
-  details.add(bolts);
-  for (const side of [-1,1]) for (const x of [2.05,-0.15]) {
-    const z = side*(HW+0.003), pts = [[x-.29,-.10,z],[x+.29,-.10,z],[x+.32,-.07,z],[x+.32,.10,z],[x-.32,.10,z],[x-.32,-.07,z]].map(p=>new THREE.Vector3(...p));
-    details.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts),seamMat));
-  }
+  const skin = part('skin', MAT.skin); root.add(skin);
   const tailCap = new THREE.Mesh(new THREE.BoxGeometry(0.02, HH * 1.5, HW * 1.5), MAT.nozzle); tailCap.position.x = XT + 0.01; root.add(tailCap);
   // Intake behind the wing, represented as a dark opening at the existing aft
   // fairing shoulder. The forward belly stays flush: no projecting intake box.
@@ -316,40 +265,25 @@ function buildMissile() {
   nozGlow.rotation.y = -Math.PI / 2; nozGlow.position.x = XT + 0.2; root.add(nozGlow);
 
   // wings: one pivot on the spine, folded aft over the back in the canister
-  const wingPts = [[0.36, 0], [0.36 - 2.75 * 0.306, 2.75], [0.36 - 2.75 * 0.306 - 0.46, 2.75], [-0.35, 0]];
   const wings = [1, -1].map((side, k) => {
     const piv = new THREE.Group(); piv.position.set(0.55, HH + 0.012 + k * 0.045, 0);
-    piv.add(new THREE.Mesh(surfaceGeo(wingPts, 0.035, side), MAT.wing));
-    const seam = [[-0.24,0.6],[-0.74,2.66]].map(([x,z])=>new THREE.Vector3(x,0.035,side*z));
-    piv.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(seam),seamMat));
-    const hinge = new THREE.Mesh(new THREE.CylinderGeometry(0.14,0.16,0.035,32),MAT.wing); hinge.position.y=0.03; piv.add(hinge);
+    piv.add(part(side > 0 ? 'wing_R' : 'wing_L', MAT.wing));
     root.add(piv); piv.userData.side = side; return piv;
   });
   // Figure 3's distinctive downward fin, with upper horizontal tail surfaces.
-  const finPts = [[0.0, 0], [-0.32, 0.95], [-0.72, 0.95], [-0.48, 0]];
   const fin = new THREE.Group(); fin.position.set(XT + 0.63, -0.21, 0);
-  const finMesh = new THREE.Mesh(surfaceGeo(finPts, 0.03), MAT.wing); finMesh.rotation.x = Math.PI / 2; fin.add(finMesh); root.add(fin);
-  const stabPts = [[0.0, 0], [-0.3, 0.77], [-0.55, 0.77], [-0.5, 0]];
-  const stabs = [1, -1].map(side => { const g = new THREE.Group(); g.position.set(XT + 0.72, 0.22, side * HW * 0.7); g.add(new THREE.Mesh(surfaceGeo(stabPts, 0.03, side), MAT.wing)); g.userData.side = side; root.add(g); return g; });
+  const finMesh = part('fin', MAT.wing); finMesh.rotation.x = Math.PI / 2; fin.add(finMesh); root.add(fin);
+  const stabs = [1, -1].map(side => { const g = new THREE.Group(); g.position.set(XT + 0.72, 0.22, side * HW * 0.7); g.add(part(side > 0 ? 'stab_R' : 'stab_L', MAT.wing)); g.userData.side = side; root.add(g); return g; });
 
   // kicker: single aft solid motor
   const kicker = new THREE.Group();
-  kicker.add(new THREE.Mesh(alongX(new THREE.CylinderGeometry(0.31, 0.31, 1.45, 32)), MAT.kicker));
-  kicker.children[0].position.x = -0.725;
-  const kb = new THREE.Mesh(alongX(new THREE.CylinderGeometry(0.14, 0.26, 0.35, 28, 1, true)), MAT.nozzle); kb.position.x = -1.62; kicker.add(kb);
-  const ring = new THREE.Mesh(alongX(new THREE.CylinderGeometry(0.33, 0.33, 0.06, 32)), MAT.dark); ring.position.x = -0.03; kicker.add(ring);
+  kicker.add(part('kicker', MAT.kicker));
   kicker.position.x = XT; root.add(kicker);
 
   // twin strap-on boosters on the lower flanks
   const srbs = [1, -1].map(side => {
     const g = new THREE.Group();
-    const body = new THREE.Mesh(alongX(new THREE.CylinderGeometry(0.18, 0.18, 4.9, 40)), MAT.booster); g.add(body);
-    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.18,32,16),MAT.booster); cap.scale.x=2.4; cap.position.x=2.45; g.add(cap);
-    const bell = new THREE.Mesh(alongX(new THREE.CylinderGeometry(0.08, 0.15, 0.28, 24, 1, true)), MAT.nozzle); bell.position.x = -2.58; g.add(bell);
-    for (const x of [-2.4,-1.4,1.35,2.42]) {
-      const band = new THREE.Mesh(alongX(new THREE.CylinderGeometry(0.184,0.184,0.035,32)),MAT.steel); band.position.x=x; g.add(band);
-    }
-    for (const x of [1.35, -1.4]) { const st = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.08, 0.15), MAT.dark); st.position.set(x, 0.06, -side * 0.15); g.add(st); }
+    g.add(part(side > 0 ? 'booster_R' : 'booster_L', MAT.booster));
     g.userData.side = side; g.userData.home = new THREE.Vector3(0.05, -0.16, side * (HW + 0.18)); g.userData.cant = 0;
     g.position.copy(g.userData.home); g.rotation.y = g.userData.cant; root.add(g); return g;
   });
@@ -441,63 +375,44 @@ const flow = (() => {
 })();
 
 // ---------- launch site: canister on an inclined launcher, roll-back shelter, apron furniture ----------
+// Positions match the terrain's flat apron (y = 6); the meshes come from blender/burevestnik.py.
 const site = new THREE.Group(); scene.add(site);
 const canister = new THREE.Group(); canister.position.copy(CANISTER); canister.rotation.z = LAUNCH_ELEV; site.add(canister);
-{
-  const L = 11.8, W = 2.0, H = 1.15, t = 0.06; // wide enough for the strapped-on boosters
-  for (const [h, w, y, z] of [[t, W, H / 2, 0], [t, W, -H / 2, 0], [H, t, 0, W / 2], [H, t, 0, -W / 2]]) {
-    const s = new THREE.Mesh(new THREE.BoxGeometry(L, h, w), MAT.canister); s.position.set(0, y, z); canister.add(s);
-  }
-  for (const x of [-5.2, -1.8, 1.8, 5.2]) { const band = new THREE.Mesh(new THREE.BoxGeometry(0.18, H + 0.1, W + 0.1), MAT.steel); band.position.x = x; canister.add(band); }
-  // launcher: base frame and two struts holding the canister at 18°
-  const base = new THREE.Mesh(new THREE.BoxGeometry(14, 0.6, 3.2), MAT.steel); base.position.set(-0.5, 6.3, 0); site.add(base);
-  for (const [x, hgt] of [[-4.2, 0.95], [3.6, 3.5]]) for (const z of [-1.1, 1.1]) {
-    const s = new THREE.Mesh(new THREE.BoxGeometry(0.25, hgt, 0.25), MAT.steel); s.position.set(x, 6.55 + hgt / 2, z); site.add(s);
-  }
-  const pivot = new THREE.Mesh(alongX(new THREE.CylinderGeometry(0.2, 0.2, 3.0, 16)).rotateY(Math.PI / 2), MAT.steel); pivot.position.set(-4.2, 7.4, 0); site.add(pivot);
-  // roll-back shelter on rails behind the launcher
-  const shelter = new THREE.Group(); shelter.position.set(-34, 6, 0); site.add(shelter);
-  const shW = 9, shH = 7, shL = 18;
-  for (const [w, h, d, x, y, z] of [[shL, 0.3, shW, 0, shH, 0], [shL, shH, 0.3, 0, shH / 2, shW / 2], [shL, shH, 0.3, 0, shH / 2, -shW / 2], [0.3, shH, shW, -shL / 2, shH / 2, 0]]) {
-    const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), std(0x606b70, { roughness: 0.85 })); b.position.set(x, y, z); shelter.add(b);
-  }
-  const ribs = new THREE.InstancedMesh(new THREE.BoxGeometry(0.06,shH,0.08),MAT.steel,80);
-  let rib=0;
-  for (const side of [-1,1]) for(let i=0;i<40;i++) { _m4.makeTranslation(-shL/2+(i+.5)*shL/40,shH/2,side*(shW/2+.17)); ribs.setMatrixAt(rib++,_m4); }
-  shelter.add(ribs);
-  const snowMat = std(0xc2d0d9,{roughness:1,metalness:0});
-  const roofSnow = new THREE.Mesh(new THREE.BoxGeometry(shL*.98,0.09,shW*.85),snowMat); roofSnow.position.set(0,shH+.2,-.4); shelter.add(roofSnow);
-  for (const z of [-3.2, 3.2]) { const rail = new THREE.Mesh(new THREE.BoxGeometry(60, 0.15, 0.2), MAT.steel); rail.position.set(-20, 6.08, z); site.add(rail); }
-  // blast wall, service building, light masts
-  const wall = new THREE.Mesh(new THREE.BoxGeometry(1.2, 4, 26), MAT.concrete); wall.position.set(-16, 8, 0); site.add(wall);
-  const bldg = new THREE.Mesh(new THREE.BoxGeometry(14, 6, 10), std(0x8a8574, { roughness: 0.9 })); bldg.position.set(-70, 9, 40); site.add(bldg);
-  const bldg2 = new THREE.Mesh(new THREE.BoxGeometry(8, 4, 8), std(0x6f6c60, { roughness: 0.9 })); bldg2.position.set(-60, 8, -45); site.add(bldg2);
-  for (const [x, z] of [[18, 22], [18, -22], [-28, 24], [-28, -24]]) {
-    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.22, 22, 8), MAT.steel); mast.position.set(x, 17, z); site.add(mast);
-    const lamp = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.8, 0.5), MAT.dark); lamp.position.set(x, 28, z); site.add(lamp);
-  }
-}
+canister.add(part('canister', MAT.site));
+const place = (name, x, z, y = 6, yaw = 0) => { const m = part(name, MAT.site); m.position.set(x, y, z); m.rotation.y = yaw; site.add(m); };
+place('launcher', 0, 0); place('rails', 0, 0); place('shelter', -34, 0); place('wall', -16, 0);
+place('building_a', -70, 40); place('building_b', -60, -45);
+for (const [x, z] of [[18, 22], [18, -22], [-28, 24], [-28, -24]]) place('mast', x, z);
+place('container', -21, 10.5, 6, 1.45); place('container', -22.5, -10, 6, 0.2); place('container', -22.5, -10, 8.72, 0.14); place('container', -9, -11.5, 6, 0.05);
+place('drums', 7.5, 9.5); place('drums', -6, 11, 6, 2.1);
+for (let i = 0; i < 6; i++) place('barrier', -7 + i * 3.05, -13.4);
 // canister front cover, blown off at ignition
 const cover = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.15, 2.0), MAT.steel); scene.add(cover);
 
 // Broken coastal scree adds scale in low shots. Seeded placement keeps exports deterministic.
-{
-  const r = rng(913), count = 2400;
-  const rocks = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1,0), std(0x666b70,{roughness:0.98,metalness:0}),count);
+function addRocks(gltf) {
+  const r = rng(913), count = 2400, spots = [[], [], [], []];
   const transform = new THREE.Object3D(), color = new THREE.Color();
-  let n = 0;
-  for (let i=0; i<count*3 && n<count; i++) {
-    const cruise = i%2 === 0;
-    const x = cruise ? X2 + r()*9000 : (r()-.45)*3000, z = (r()-.5)*(cruise ? 4200 : 3200);
-    const h = terrainH(x,z);
-    if (h<2 || Math.hypot(x+15,z)<180) continue;
-    const scale = 0.25 + r()**3*1.8;
-    transform.position.set(x,h+scale*0.16,z); transform.rotation.set(r()*0.4,r()*Math.PI,r()*0.35);
-    transform.scale.set(scale*(0.9+r()),scale*0.45,scale*(0.7+r())); transform.updateMatrix();
-    rocks.setMatrixAt(n,transform.matrix); color.copy(lin(0x80868b)).multiplyScalar(0.55+r()*0.5); rocks.setColorAt(n,color); n++;
+  for (let i = 0, n = 0; i < count * 3 && n < count; i++) {
+    const cruise = i % 2 === 0;
+    const x = cruise ? X2 + r() * 9000 : (r() - .45) * 3000, z = (r() - .5) * (cruise ? 4200 : 3200);
+    const h = terrainH(x, z);
+    if (h < 2 || Math.hypot(x + 15, z) < 180) continue;
+    const scale = 0.25 + r() ** 3 * 1.8;
+    transform.position.set(x, h + scale * 0.16, z); transform.rotation.set(r() * 0.4, r() * Math.PI, r() * 0.35);
+    transform.scale.set(scale * (0.9 + r()), scale * (0.5 + r() * 0.3), scale * (0.7 + r())); transform.updateMatrix();
+    spots[n % 4].push([transform.matrix.clone(), color.clone().setScalar(0.65 + r() * 0.5)]); n++;
   }
-  rocks.count=n; rocks.frustumCulled=false; scene.add(rocks);
+  spots.forEach((list, k) => {
+    const rocks = new THREE.InstancedMesh(gltf.scene.getObjectByName(`rock_${k}`).geometry, MAT.rock, list.length);
+    list.forEach(([m, c], i) => { rocks.setMatrixAt(i, m); rocks.setColorAt(i, c); });
+    rocks.frustumCulled = false; scene.add(rocks);
+  });
 }
+const loaded = new GLTFLoader().loadAsync('/models/burevestnik.glb').then(gltf => {
+  for (const mesh of PARTS) mesh.geometry = gltf.scene.getObjectByName(mesh.name).geometry;
+  addRocks(gltf);
+});
 
 // ---------- exhaust plumes (additive cones along local −x) ----------
 function makePlume(len, rad, core, outer) {
@@ -857,7 +772,7 @@ function render(t) {
 const qs = new URLSearchParams(location.search);
 let ft = Number(qs.get('t') || 0);
 window.__dbg = { M, mE, PATH, X2, state, terrainH };
-window.__film = { ready: Promise.resolve(), seek: t => render(t), duration: DUR };
+window.__film = { ready: loaded, seek: t => render(t), duration: DUR };
 if (!qs.has('film')) {
   let last = performance.now(), paused = false;
   addEventListener('keydown', e => { if (e.code === 'Space') paused = !paused; if (e.code === 'ArrowRight') ft += 5; if (e.code === 'ArrowLeft') ft = Math.max(0, ft - 5); });
@@ -865,5 +780,5 @@ if (!qs.has('film')) {
   $('tl').style.pointerEvents = 'auto';
   $('tl').addEventListener('click', e => { const r = $('tl').getBoundingClientRect(); ft = clamp((e.clientX - r.left) / r.width, 0, 1) * DUR; });
   const loop = now => { const dt = Math.min(0.1, (now - last) / 1000); last = now; if (!paused) ft = (ft + dt) % DUR; render(ft); requestAnimationFrame(loop); };
-  requestAnimationFrame(loop);
-} else render(ft);
+  loaded.then(() => requestAnimationFrame(loop));
+} else loaded.then(() => render(ft));

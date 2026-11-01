@@ -15,7 +15,7 @@ export interface Stage {
   onResize: (fn: () => void) => void; render: (rawDt: number, time: number) => void;
 }
 
-export function createStage(canvas: HTMLCanvasElement, host: HTMLElement): Stage | null {
+export function createStage(canvas: HTMLCanvasElement, host: HTMLElement, { depth24 = false } = {}): Stage | null {
   let renderer: THREE.WebGLRenderer;
   try { renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' }); }
   catch { return null; }
@@ -30,7 +30,8 @@ export function createStage(canvas: HTMLCanvasElement, host: HTMLElement): Stage
   scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
 
   // no MSAA: resolving a multisampled float target cost ~10 ms/frame on Intel UHD; the render scale smooths edges instead
-  const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType }));
+  // depth24: three r147 only gives a render target more than 16-bit depth if it also has a stencil buffer
+  const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, stencilBuffer: depth24 }));
   composer.setPixelRatio(Q.pr);
   composer.addPass(new RenderPass(scene, camera));
   const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.55, 0.45, 0.9);
