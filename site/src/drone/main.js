@@ -336,6 +336,7 @@ function addInstances(gltf, batches, material, shadows) {
   const meshes = [];
   for (const [name, list] of Object.entries(batches)) {
     const mesh = new THREE.InstancedMesh(gltf.scene.getObjectByName(name).geometry, material, list.length);
+    mesh.name = name;
     list.forEach(([m, c], i) => { mesh.setMatrixAt(i, m); mesh.setColorAt(i, c); });
     mesh.castShadow = mesh.receiveShadow = shadows; mesh.frustumCulled = false;
     scene.add(mesh);
@@ -482,7 +483,7 @@ const razorbill = new GLTFLoader().loadAsync('/models/razorbill.glb').then(gltf 
     const pivot = new THREE.Group(); pivot.position.set(mc.x, 0, mc.z); model.add(pivot); pivot.updateMatrixWorld(true); pivot.attach(prop);
     let rad = 0; prop.traverse(o => { if (o.isMesh) { const p = o.geometry.attributes.position; o.updateMatrixWorld(true); for (let i = 0; i < p.count; i += 3) { _v.fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld); rad = Math.max(rad, Math.hypot(_v.x - mc.x, _v.z - mc.z)); } } });
     const disc = new THREE.Mesh(new THREE.PlaneGeometry(2 * rad, 2 * rad).rotateX(-Math.PI / 2), discMat.clone());
-    disc.position.set(mc.x, (pb.min.y + pb.max.y) / 2, mc.z); disc.renderOrder = 2; model.add(disc);
+    disc.position.set(mc.x, (pb.min.y + pb.max.y) / 2, mc.z); disc.renderOrder = 2; disc.name = `disc_${n}`; model.add(disc);
     D.props.push({ pivot, dir: n % 2 ? 1 : -1, ph: n * 1.3 }); D.discs.push(disc);
   }
   // the rod leaves the drone: its nodes keep their places in the drone frame, inside a group that undoes ARROW_LOCAL
@@ -629,12 +630,23 @@ function keyed(keys, t) {
     return (2 * u3 - 3 * u2 + 1) * a[n] + (u3 - 2 * u2 + u) * h * slope(i, n) + (-2 * u3 + 3 * u2) * b[n] + (u3 - u2) * h * slope(i + 1, n);
   });
 }
+// ?blend: the opening is reached by a dissolve from the assembly plate (video/skyfall/), close on the drone at about the plate's angle
+const BLEND_PULL = 4.2, BLEND_AZ = -55 * DEG;
 const SHOTS = [
   { t: 0, wide: true, f(t, S) { // establishing: high and broad, the drone crossing the field under the title
     const u = t / 4.4;
     camera.position.copy(state(W(2.2), S2).pos).add(V3(mix(-11, -3, u), mix(13, 11, u), mix(-20, -18, u)));
-    camera.lookAt(_v.copy(S.c).addScaledVector(S.Fh, 4).add(V3(0, -1.2, 0)));
-    camera.fov = 34; return [S.c, 30];
+    _pa.copy(S.c).addScaledVector(S.Fh, 4).add(V3(0, -1.2, 0));
+    camera.fov = 34;
+    if (qs.has('blend')) { // the programme film dissolves in from the drawing: start close at its angle, pull back into the wide
+      const k = Math.pow(ease(t / BLEND_PULL), 1.5), el = 26 * DEG, az = BLEND_AZ, r = 1.8;
+      _pb.copy(S.Fh).multiplyScalar(Math.cos(az)).addScaledVector(S.Rh, Math.sin(az)).multiplyScalar(Math.cos(el) * r).add(V3(0, Math.sin(el) * r, 0)).add(S.c);
+      camera.position.lerpVectors(_pb, camera.position, k);
+      _pa.lerpVectors(_pc.copy(S.c).add(V3(0, -0.34, 0)), _pa, k);
+      camera.fov = mix(30, 34, k);
+    }
+    camera.lookAt(_pa);
+    return [S.c, mix(4, 30, qs.has('blend') ? Math.pow(ease(t / BLEND_PULL), 1.5) : 1)];
   } },
   { t: 4.4, f(t, S) { // one move: wide, in to the rod's nose, up the rod while circling it, the drone close, back to the hook
     const [az, r, y, look, fov] = keyed(SCAN, t);
@@ -667,8 +679,9 @@ const SHOTS = [
 const $ = id => document.getElementById(id);
 const PLOT = { x0: 96, x1: 824, y0: 400, y1: 60 };
 function overlays(t) {
-  $('fade').style.opacity = String(Math.max(1 - sstep(0, 0.8, t), sstep(DUR - 1.1, DUR - 0.1, t)));
-  $('intro').style.opacity = String(sstep(0.7, 1.4, t) * (1 - sstep(3.7, 4.3, t)));
+  $('fade').style.opacity = String(Math.max(qs.has('blend') ? 0 : 1 - sstep(0, 0.8, t), sstep(DUR - 1.1, DUR - 0.1, t)));
+  // ?notitle: the programme film (video/skyfall/) carries its own titles and timeline
+  $('intro').style.opacity = qs.has('notitle') ? '0' : String(sstep(0.7, 1.4, t) * (1 - sstep(3.7, 4.3, t)));
   $('plot').style.opacity = String(sstep(T_PLOT[0] - 0.5, T_PLOT[0] + 0.1, t));
   if (t < T_PLOT[0] - 0.5) return;
   const u = clamp((t - T_PLOT[0]) / (T_PLOT[1] - T_PLOT[0]), 0, 1), last = u * (SIGNAL.length - 1);
@@ -681,7 +694,7 @@ function overlays(t) {
 }
 
 // ---------- frame ----------
-function render(t) {
+function render(t, draw = true) {
   const w = W(t);
   shared.uTime.value = w;
   poseDrone(w);
@@ -697,12 +710,15 @@ function render(t) {
   poseLarvae(t);
   revealU.value = sstep(22.2, 24.6, t);
   overlays(t);
-  st.render(0, t);
+  if (draw) st.render(0, t);
 }
 
 const qs = new URLSearchParams(location.search);
 let ft = Number(qs.get('t') || 0);
 window.__dbg = { W, W_REL, W_HIT, IMPACT, FALL, state, HOV, SIGNAL, T_PLOT };
+// for video/skyfall/field/bake.js, which poses the film without drawing it and hands the scene to Blender
+window.__bake = { pose: t => render(t, false), scene, camera, D, arrow, LARVAE, clods, dust, dustU, skin, revealU, kickU, impactU, droneU, washU, shared,
+  SUN, FOG, REVEAL, IMPACT, PLOT, DUR, ROW, PLANTS, FIELD, SIGNAL, T_PLOT, RINGS, SIDES };
 window.__film = { ready: loaded, seek: t => render(t), duration: DUR };
 if (!qs.has('film')) $('labs').hidden = false;
 loaded.then(() => {

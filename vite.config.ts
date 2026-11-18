@@ -41,6 +41,7 @@ export default defineConfig({
         conops: resolve(root, 'conops.html'),
         math: resolve(root, 'math.html'),
         drone: resolve(root, 'drone.html'),
+        x12: resolve(root, 'x12.html'),
       },
     },
   },

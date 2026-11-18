@@ -1,0 +1,65 @@
+<!doctype html>
+<!-- The programme timeline along the bottom of the Operation SKYFALL film. export.js writes it to video/out/skyfall-work/
+     with window.SKYFALL (phases.mjs) and the fonts next to it, renders it with a transparent background and lays it over
+     the whole film. window.__film.seek(t) takes programme seconds; open that copy with ?t=40 to look at one moment. -->
+<html lang="en"><head><meta charset="utf-8"><title>SKYFALL timeline</title>
+<style>
+@font-face { font-family: "Plex"; font-weight: 400; src: url("ibm-plex-mono-400-latin.woff2") format("woff2"); }
+@font-face { font-family: "Plex"; font-weight: 500; src: url("ibm-plex-mono-500-latin.woff2") format("woff2"); }
+@font-face { font-family: "Saira"; font-weight: 600; src: url("saira-condensed-600-latin.woff2") format("woff2"); }
+html, body { margin: 0; width: 1920px; height: 220px; overflow: hidden; background: transparent; }
+body.preview { background: #3a4a3a; }
+:root { --ink: #F4F1EA; --dim: #b9c0cc; --amber: #FFB35C; }
+#strip { position: absolute; inset: 0; opacity: 0; }
+#shade { position: absolute; inset: 0; background: linear-gradient(to top, rgba(3, 5, 9, .86) 0%, rgba(3, 5, 9, .62) 52%, rgba(3, 5, 9, 0) 100%); }
+.seg { position: absolute; bottom: 0; height: 220px; }
+.seg .head { position: absolute; left: 0; bottom: 100px; white-space: nowrap; }
+.seg .n { font: 500 15px "Plex", monospace; letter-spacing: .18em; color: var(--amber); text-transform: uppercase; }
+.seg .name { display: block; margin-top: 2px; font: 600 33px/1.05 "Saira", sans-serif; letter-spacing: .04em; color: var(--ink); text-transform: uppercase; }
+.seg .bar { position: absolute; left: 0; right: 0; bottom: 74px; height: 4px; background: rgba(244, 241, 234, .2); }
+.seg .fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--ink); }
+.seg .tick { position: absolute; left: 0; bottom: 66px; width: 2px; height: 20px; background: rgba(244, 241, 234, .55); }
+.seg .meta { position: absolute; left: 0; bottom: 34px; white-space: nowrap; font: 400 15px "Plex", monospace; letter-spacing: .14em; color: var(--dim); text-transform: uppercase; }
+.seg .meta b { font-weight: 500; color: var(--ink); }
+.seg .meta i { font-style: normal; color: var(--amber); padding: 0 .5em; }
+.seg.active .fill { background: var(--amber); box-shadow: 0 0 14px rgba(255, 179, 92, .55); }
+#head { position: absolute; bottom: 68px; width: 16px; height: 16px; margin-left: -8px; transform: rotate(45deg); background: var(--amber); box-shadow: 0 0 0 4px rgba(255, 179, 92, .22), 0 0 18px rgba(255, 179, 92, .7); }
+</style></head>
+<body>
+<div id="strip"><div id="shade"></div><div id="segs"></div><div id="head"></div></div>
+<script>
+const { PHASES, END } = window.SKYFALL;
+const L = 96, R = 1824, GAP = 28;
+const width = (R - L - GAP * (PHASES.length - 1)) / PHASES.length;
+const segs = PHASES.map((p, i) => {
+  const el = document.createElement('div');
+  el.className = 'seg';
+  el.style.left = `${L + i * (width + GAP)}px`;
+  el.style.width = `${width}px`;
+  el.innerHTML = `<div class="head"><span class="n">Phase ${p.n}</span><span class="name">${p.name}</span></div>
+    <div class="bar"><div class="fill"></div></div><div class="tick"></div>
+    <div class="meta"><b>${p.when}</b><i>/</i>${p.where}</div>`;
+  document.getElementById('segs').appendChild(el);
+  return { p, el, fill: el.querySelector('.fill'), x: L + i * (width + GAP) };
+});
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const smooth = (a, b, x) => { const u = clamp((x - a) / (b - a)); return u * u * (3 - 2 * u); };
+function seek(t) {
+  // in after the title card, out with the end card's fade to black
+  document.getElementById('strip').style.opacity = (smooth(PHASES[0].from - 0.2, PHASES[0].from + 0.6, t) * (1 - smooth(END.to - 0.8, END.to, t))).toFixed(3);
+  let headX = L;
+  for (const s of segs) {
+    const u = clamp((t - s.p.from) / (s.p.to - s.p.from));
+    const active = t >= s.p.from && t < s.p.to;
+    s.el.classList.toggle('active', active);
+    s.fill.style.width = `${(u * 100).toFixed(3)}%`;
+    s.el.style.opacity = active ? 1 : t >= s.p.to ? 0.72 : 0.42;
+    if (t >= s.p.from) headX = s.x + u * width;
+  }
+  document.getElementById('head').style.left = `${headX.toFixed(2)}px`;
+}
+window.__film = { ready: document.fonts.ready, seek };
+const q = new URLSearchParams(location.search);
+if (q.has('t')) { document.body.classList.add('preview'); seek(+q.get('t')); }
+</script>
+</body></html>

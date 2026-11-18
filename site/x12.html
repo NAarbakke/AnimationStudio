@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>X-12 Autonomous</title>
+<link rel="stylesheet" href="/src/shared/fonts/fonts.css">
+<style>
+  :root {
+    color-scheme: dark;
+    --ink: #F4F1EA;
+    --dim: #C9C3B6;
+    --amber: #FFB35C;
+    --red: #FF5A48;
+    --cyan: #7FE3FF;
+    --glass: rgba(5, 9, 14, .72);
+    --mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+    --cond: 'Saira Condensed', 'Arial Narrow', 'Roboto Condensed', sans-serif;
+  }
+  html, body { height: 100%; margin: 0; background: #000; color: var(--ink); overflow: hidden; }
+  #c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  #err[hidden] { display: none; }
+  #err { position: fixed; inset: 0; display: grid; place-items: center; padding-inline: 24px; text-align: center; font-family: var(--mono); color: var(--dim); }
+  .fx { position: fixed; pointer-events: none; opacity: 0; }
+
+  /* opening title */
+  #intro { left: 5vw; bottom: 9vh; text-shadow: 0 2px 22px rgba(0,0,0,.5); }
+  #intro .kicker { font-family: var(--cond); font-weight: 600; font-size: clamp(14px, 1.25vw, 26px); letter-spacing: .32em; color: var(--amber); }
+  #intro h1 { margin: .15em 0 0; font-family: var(--cond); font-weight: 700; font-size: clamp(48px, 6.6vw, 140px); letter-spacing: .03em; line-height: .95; }
+  #intro .rule { width: 110px; height: 2px; margin-top: 18px; background: var(--amber); }
+  #intro p { margin: 14px 0 0; font-family: var(--cond); font-weight: 600; font-size: clamp(20px, 2.1vw, 44px); letter-spacing: .05em; }
+
+  /* component callout */
+  #leader { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0; }
+  #leader line { stroke: var(--amber); stroke-width: 1.6; }
+  #leader circle.dot { fill: var(--amber); }
+  #leader circle.ring { fill: none; stroke: var(--amber); stroke-width: 1.4; }
+  #card { left: 4.2vw; bottom: 8vh; width: min(34vw, 640px); padding: 26px 30px 26px; background: var(--glass); border-left: 3px solid var(--amber); backdrop-filter: blur(3px); }
+  #card .idx { font-family: var(--mono); font-size: clamp(11px, .8vw, 16px); letter-spacing: .18em; color: var(--dim); }
+  #card .grp { margin-top: 6px; font-family: var(--cond); font-weight: 600; font-size: clamp(13px, 1vw, 20px); letter-spacing: .3em; text-transform: uppercase; color: var(--amber); }
+  #card h2 { margin: 4px 0 14px; font-family: var(--cond); font-weight: 700; font-size: clamp(30px, 2.9vw, 60px); letter-spacing: .02em; line-height: 1; }
+  #card ul { margin: 0; padding: 0; list-style: none; }
+  #card li { font-family: var(--mono); font-size: clamp(12px, .95vw, 19px); line-height: 1.55; color: var(--ink); padding-left: 1.1em; position: relative; }
+  #card li::before { content: ''; position: absolute; left: 0; top: .72em; width: .5em; height: 1.5px; background: var(--amber); }
+
+  /* sprint telemetry */
+  #tele { left: 4.2vw; bottom: 8vh; font-family: var(--mono); }
+  #tele .big { font-family: var(--cond); font-weight: 700; font-size: clamp(56px, 6vw, 128px); line-height: .9; letter-spacing: .01em; }
+  #tele .big small { font-size: .38em; letter-spacing: .12em; color: var(--dim); margin-left: .2em; }
+  #tele .row { margin-top: 10px; font-size: clamp(12px, .95vw, 19px); letter-spacing: .14em; color: var(--dim); }
+  #tele .row b { color: var(--amber); font-weight: 500; }
+
+  /* engagement HUD */
+  #steps { top: 5vh; left: 50%; transform: translateX(-50%); display: flex; gap: 0; background: var(--glass); border: 1px solid rgba(244,241,234,.18); }
+  #steps div { font-family: var(--cond); font-weight: 600; font-size: clamp(13px, 1.05vw, 22px); letter-spacing: .24em; padding: 9px 22px; color: rgba(244,241,234,.35); }
+  #steps div + div { border-left: 1px solid rgba(244,241,234,.18); }
+  #steps div.done { color: var(--ink); }
+  #steps div.on { color: #08090c; background: var(--amber); }
+  #steps div.kill { color: #08090c; background: var(--cyan); }
+  #scope { top: 4vh; right: 3vw; width: min(19vw, 340px); }
+  #scope svg { display: block; width: 100%; height: auto; }
+  #scope .bg { fill: rgba(4, 10, 12, .78); stroke: rgba(127, 227, 255, .5); stroke-width: 1.5; }
+  #scope .ring { fill: none; stroke: rgba(127, 227, 255, .22); stroke-width: 1; }
+  #scope .sweep { fill: url(#sw); }
+  #scope text { font-family: var(--mono); font-size: 13px; fill: var(--cyan); letter-spacing: .08em; }
+  #scope .own { fill: var(--cyan); }
+  #scope .friend { fill: #9fd3ff; }
+  #scope .hostile { fill: var(--red); }
+  #scope .msl { fill: var(--amber); }
+  #box { width: 64px; height: 64px; margin: -32px 0 0 -32px; left: 0; top: 0; }
+  #box svg { position: absolute; inset: 0; overflow: visible; }
+  #box path { fill: none; stroke: var(--amber); stroke-width: 2.4; }
+  #box.hostile path { stroke: var(--red); }
+  #box .lbl { position: absolute; left: 78px; top: -6px; white-space: nowrap; font-family: var(--mono); font-size: clamp(12px, .9vw, 18px); letter-spacing: .1em; color: var(--amber); text-shadow: 0 1px 6px rgba(0,0,0,.8); }
+  #box.hostile .lbl { color: var(--red); }
+  #box .lbl span { display: block; color: var(--ink); opacity: .85; }
+  #alert { left: 4.2vw; bottom: 8vh; padding: 18px 24px; background: var(--glass); border-left: 3px solid var(--red); font-family: var(--mono); font-size: clamp(12px, .95vw, 19px); line-height: 1.6; letter-spacing: .08em; }
+  #alert b { display: block; font-family: var(--cond); font-weight: 700; font-size: clamp(22px, 2vw, 42px); letter-spacing: .08em; color: var(--red); }
+
+  /* EO/IR view */
+  #eoir { inset: 0; font-family: var(--mono); color: #fff; font-size: clamp(12px, 1vw, 20px); letter-spacing: .12em; }
+  #eoir .tl { position: absolute; left: 4vw; top: 6vh; line-height: 1.6; }
+  #eoir .tr { position: absolute; right: 4vw; top: 6vh; text-align: right; line-height: 1.6; }
+  #eoir .bl { position: absolute; left: 4vw; bottom: 7vh; line-height: 1.6; }
+  #eoir .cls { position: absolute; left: 50%; bottom: 14vh; transform: translateX(-50%); padding: 8px 18px; border: 1.5px solid #fff; font-size: clamp(14px, 1.25vw, 26px); opacity: 0; }
+  #eoir svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  #eoir svg * { stroke: #fff; stroke-width: 1.6; fill: none; }
+
+  /* end card */
+  #end { inset: 0; display: grid; place-content: center; text-align: center; background: radial-gradient(ellipse at center, rgba(3,6,10,.55), rgba(3,6,10,.15) 70%); }
+  #end .kicker { font-family: var(--cond); font-weight: 600; font-size: clamp(14px, 1.2vw, 24px); letter-spacing: .34em; color: var(--amber); }
+  #end h1 { margin: .12em 0 0; font-family: var(--cond); font-weight: 700; font-size: clamp(56px, 7.4vw, 160px); letter-spacing: .03em; line-height: .95; }
+  #end .rule { width: 120px; height: 2px; margin: 20px auto 0; background: var(--amber); }
+  #end p { margin: 18px 0 0; font-family: var(--cond); font-weight: 600; font-size: clamp(20px, 2.2vw, 46px); letter-spacing: .14em; }
+  #end small { display: block; margin-top: 26px; font-family: var(--mono); font-size: clamp(11px, .8vw, 16px); letter-spacing: .14em; color: var(--dim); }
+
+  #fade { position: fixed; inset: 0; background: #000; pointer-events: none; }
+  .labs { position: fixed; left: 20px; top: 18px; z-index: 1; display: flex; border: 1px solid rgba(244, 241, 234, .28); background: rgba(5, 8, 14, .66); }
+  .labs[hidden] { display: none; }
+  .labs a { font-family: var(--cond); font-weight: 600; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--dim); text-decoration: none; padding: 5px 10px; }
+  .labs a + a { border-left: 1px solid rgba(244, 241, 234, .28); }
+  .labs a:hover { color: var(--ink); }
+  .labs a[aria-current="page"] { background: var(--ink); color: #05080e; }
+  .labs a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+</style>
+
+<canvas id="c" aria-label="3D film of the X-12 Autonomous uncrewed boat riding rough seas in a Norwegian fjord, a tour of its sensors and launchers, and the interception of a drone"></canvas>
+<div id="err" hidden>WebGL is not available in this browser, so the film cannot render.</div>
+
+<div class="fx" id="intro">
+  <div class="kicker">UNCREWED SURFACE VESSEL</div>
+  <h1>X-12 AUTONOMOUS</h1>
+  <div class="rule"></div>
+  <p>Persistent sensing and defence for the High North</p>
+</div>
+
+<svg id="leader" aria-hidden="true"><line id="ln"/><circle class="ring" id="lr" r="11"/><circle class="dot" id="ld" r="4"/></svg>
+<div class="fx" id="card"><div class="idx" id="cidx"></div><div class="grp" id="cgrp"></div><h2 id="ctitle"></h2><ul id="clist"></ul></div>
+
+<div class="fx" id="tele">
+  <div class="big"><span id="kn">0</span><small>KN</small></div>
+  <div class="row">MODE <b>ESCORT · AUTONOMOUS</b></div>
+  <div class="row">SEA STATE <b>5</b> · WIND <b>28 KN</b></div>
+</div>
+
+<div class="fx" id="steps"><div>DETECT</div><div>TRACK</div><div>IDENTIFY</div><div>ENGAGE</div><div>NEUTRALISED</div></div>
+<div class="fx" id="scope">
+  <svg viewBox="0 0 300 300">
+    <defs><radialGradient id="sw" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="rgba(127,227,255,.0)"/><stop offset="1" stop-color="rgba(127,227,255,.0)"/></radialGradient>
+      <linearGradient id="swl" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="rgba(127,227,255,0)"/><stop offset="1" stop-color="rgba(127,227,255,.35)"/></linearGradient></defs>
+    <circle class="bg" cx="150" cy="150" r="140"/>
+    <circle class="ring" cx="150" cy="150" r="46.7"/><circle class="ring" cx="150" cy="150" r="93.3"/>
+    <line class="ring" x1="150" y1="12" x2="150" y2="288"/><line class="ring" x1="12" y1="150" x2="288" y2="150"/>
+    <path id="sweep" fill="url(#swl)" d=""/>
+    <g id="blips"></g>
+    <polygon class="own" points="150,141 156,157 144,157"/>
+    <text x="22" y="292">RNG 3 KM</text><text x="200" y="292" id="scopeMode">AIR · SURF</text>
+  </svg>
+</div>
+<div class="fx" id="box"><svg viewBox="0 0 64 64"><path d="M0 16V0H16M48 0H64V16M64 48V64H48M16 64H0V48"/></svg><div class="lbl" id="boxl"></div></div>
+<div class="fx" id="alert"><b id="alertT">AIR CONTACT</b><span id="alertB"></span></div>
+
+<div class="fx" id="eoir">
+  <svg><circle cx="50%" cy="50%" r="28"/><line x1="50%" y1="0" x2="50%" y2="44%"/><line x1="50%" y1="56%" x2="50%" y2="100%"/><line x1="0" y1="50%" x2="45%" y2="50%"/><line x1="55%" y1="50%" x2="100%" y2="50%"/>
+    <path d="M38 34 h4 M38 34 v4" /></svg>
+  <div class="tl">EO/IR · MWIR · WHT HOT<br>FOV 0.8° · STAB ON</div>
+  <div class="tr" id="eoirR">TRK 07<br>RNG — M</div>
+  <div class="bl" id="eoirB">AUTO-TRACK · LOCKED</div>
+  <div class="cls" id="eoirC">CLASSIFIED · ONE-WAY ATTACK UAS · 97 %</div>
+</div>
+
+<div class="fx" id="end">
+  <div class="kicker">UNCREWED SURFACE VESSEL</div>
+  <h1>X-12 AUTONOMOUS</h1>
+  <div class="rule"></div>
+  <p>DETECT · DECIDE · DEFEND</p>
+  <small>Goldfish X12 hull · notional mission fit · concept visualisation</small>
+</div>
+<div id="fade"></div>
+<nav class="labs" aria-label="Labs" id="labs" hidden><a href="index.html">Launch</a><a href="engine.html">Liquid engine</a><a href="srm.html">Solid motor</a><a href="math.html">The maths</a><a href="conops.html">Burevestnik</a><a href="drone.html">Razorbill</a><a href="x12.html" aria-current="page">X-12</a></nav>
+
+<script type="module" src="/src/x12/main.js"></script>

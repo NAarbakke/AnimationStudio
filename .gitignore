@@ -21,3 +21,22 @@ video/**/*.storyboard*.png
 video/manim/out/
 # the maths page's films, copied there by npm run insert
 site/public/videos/
+
+# Unity project: caches and per-machine state Unity regenerates on open, IDE project files, preview captures
+unity/*/[Ll]ibrary/
+unity/*/[Tt]emp/
+unity/*/[Ll]ogs/
+unity/*/[Oo]bj/
+unity/*/[Bb]uild/
+unity/*/[Bb]uilds/
+unity/*/[Uu]ser[Ss]ettings/
+unity/*/[Mm]emory[Cc]aptures/
+unity/*/[Rr]ecordings/
+unity/*/Screenshots/
+unity/*/.vscode/
+unity/*/.vs/
+unity/*/*.csproj
+unity/*/*.sln
+unity/*/*.slnx
+unity/*/*.pidb
+unity/*/*.unityproj

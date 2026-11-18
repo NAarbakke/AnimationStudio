@@ -12,8 +12,9 @@ it: code-CAD that feeds the pages their models, and scripts that turn the pages 
 | The maths | `/math.html` | `src/math/` + `video/manim/` | The labs' equations as ManimGX films (rendered videos, see below) |
 | Burevestnik ConOps | `/conops.html` | `src/conops/` | 3-minute notional concept-of-operations film (the bar hides in `?film`) |
 | Razorbill drop | `/drone.html` | `src/drone/` | 39 s film, Operation SKYFALL: the Razorbill farm drone drops its sensor rod into a crop field, larvae climb the rod and each crossing of the sensor strip spikes a signal plot (the bar hides in `?film`) |
+| X-12 Autonomous | `/x12.html` | `src/x12/` | 78 s investor film: the uncrewed X-12 (Goldfish X12 hull, notional mission fit) in rough seas in a northern Norwegian fjord, a seven-part tour of its hull, propulsion and sensors, a sprint to an escort group and the detection and interception of a one-way attack drone (`npm run video:x12` for the browser render; the Cycles version: `npm run video:x12:bake`, then `npm run video:x12:blender` or `video/x12/render-server.sh` on a GPU server, then `npm run video:x12:finish`) |
 
-All six are linked by the tabs in the top-left corner. Nothing is published:
+All seven are linked by the tabs in the top-left corner (the X-12 tab only on its own page so far). Nothing is published:
 the site runs from `npm run dev`, or from `dist/` on any static file server.
 
 ```bash
@@ -26,7 +27,7 @@ npm run build        # type-check, then the static site in dist/; host anywhere
 
 ```
 site/                the website (Vite root): everything here ends up in dist/
-  *.html             the six pages; URLs stay /srm.html etc.
+  *.html             the seven pages; URLs stay /srm.html etc.
   src/
     shared/          stage (renderer + post + quality), nozzle gas dynamics, plume, lab.css, fonts/ (local webfonts)
     launch/          launch animation (index.html; plain JS module)
@@ -35,7 +36,9 @@ site/                the website (Vite root): everything here ends up in dist/
     math/            maths page: shows a hint where a film has not been rendered yet
     conops/          Burevestnik ConOps film (main.js; arctic.js: the Novaya Zemlya terrain shaders)
     drone/           Razorbill drop film
-  public/models/     models the site loads, served as-is at /models/ (srm.glb, srm.json, razorbill.glb, vegetation.glb);
+    x12/             X-12 Autonomous film (fjord terrain, Gerstner sea, wake and spray, launcher rig, HUD)
+  public/models/     models the site loads, served as-is at /models/ (srm.glb, srm.json, razorbill.glb, vegetation.glb,
+                     x12-autonomous.glb from SystemsAnalysisTool's goldfish-x12/build.py -- --autonomous);
                      committed, so a fresh checkout runs without the CAD venv or Blender
   public/videos/     the maths page's films, put there by `npm run insert` (git-ignored)
 blender/
@@ -141,6 +144,8 @@ that everything runs offline. The fonts (IBM Plex Mono, Saira Condensed) are in 
 | `video:conops` | Build, then the full ConOps delivery → `video/out/burevestnik-conops.mp4` |
 | `video:conops:review` | Sample the ConOps timeline and check cutaway labels → `video/out/conops-review/` |
 | `video:drone` | Operation SKYFALL film → `video/out/operation-skyfall.mp4` (39 s, 1080p, 30 fps) |
+| `video:skyfall` | Operation SKYFALL programme film (design, assembly, field tests, with a timeline) → `video/out/operation-skyfall-programme.mp4` (77 s) |
+| `video:skyfall:field` | Phase 3 of that film rendered in Blender, with the ManimGX signal plot → `video/out/skyfall-work/field-blender.mp4` (hours) |
 | `video:web -- [files] [--crf n]` | Streaming copies of finished videos → `video/out/web/` (see below) |
 
 ## Common tasks
@@ -291,6 +296,48 @@ node video/teaser/finish.js shoot --reuse    # keep the base picture, redo only 
 ```
 
 `blender/razorbill_teaser.py` writes every second frame to `video/out/teaser-frames/` and skips frames already there (82 minutes on the i7-10610U); `finish.js` interpolates each shot on its own to 24 fps. `video/teaser/figure/build.mjs` draws the plate from sizes measured on `razorbill.glb` (the shapes are drawn from those sizes, not traced) and `live.js` is its film clock. Anatomy is installed as a project skill in `.claude/skills/anatomy` (MIT, upstream commit `1482e84`); the figure imports its kit from there.
+
+### Operation SKYFALL programme film
+
+One 77 s film of the programme, with a timeline along the bottom that fills as each phase runs:
+
+| Phase | When / where | Picture |
+| --- | --- | --- |
+| 1 Design of Razorbill | Fall 2026, StartupLab | The Anatomy plate as a blueprint: outlines draw on, faces fill in, dimensions and callouts, design freeze (REV A → C) |
+| 2 Assembly of drone | Winter 2027, Sagene, Oslo | The same plate shaded on the bench: it explodes, closes up assembly by assembly, the props spin up and it lifts off, dissolving into the field |
+| 3 Field tests to verify ConOps | Spring 2027, NIBIO-affiliated farm | The Razorbill drop film (`drone.html?film&notitle&blend`: opens close on the drone at the drawing's angle and pulls back into the wide, then the drop, the rod, larvae climbing it, the signal plot) |
+
+```bash
+npm run video:skyfall                        # video/out/operation-skyfall-programme.mp4
+node video/skyfall/export.js --reuse         # redo only the pieces missing from video/out/skyfall-work/
+node video/skyfall/export.js --field         # also re-render the field film (the slow part)
+node video/skyfall/build.mjs && node video/skyfall/stills.js 9 15 23 30   # check plate shots
+```
+
+The running order, words, dates and places are all in `video/skyfall/phases.mjs`. `build.mjs` draws the plate from
+`video/teaser/figure/razorbill.mjs` (the teaser's drawing, shared) and `live.js` is its clock, in programme seconds.
+`timeline.html` is the strip, rendered with alpha and laid over the cut. The field film is rendered once and kept in
+`video/out/skyfall-work/field.mp4` and redone when its page string in `phases.mjs` changes; pass `--field` after changing the drone page itself. No soundtrack yet.
+
+**Phase 3 rendered in Blender.** The field tests can come from Blender instead of the browser. The choreography stays in
+`site/src/drone/main.js`; Blender only renders it:
+
+```bash
+npm run video:skyfall:field    # bake, Blender render, plot -> video/out/skyfall-work/field-blender.mp4
+npm run video:skyfall          # then uses it (pass --three for the browser film)
+```
+
+1. `video/skyfall/field/bake.js` steps the film without drawing it and writes out, per frame, the camera, every moving part,
+   the larvae meshes, clods, dust and the shader inputs, plus the 313 000 plants once (`video/out/skyfall-work/blender/`).
+   It skips itself when current; `--force` after editing the film.
+2. `blender/skyfall_field.py` rebuilds the scene from that: the GLB models, the ground and sky shaders ported to nodes,
+   crops and trees as instances that sway in the wind and downwash, and renders `frames/NNNN.png`. EEVEE at 8 samples is
+   about 10–40 s a frame on this laptop (Quadro P520), so 4–8 hours for 1170 frames; it resumes where it stopped.
+   `FIELD_ENGINE=cycles`, `FIELD_SAMPLES`, `FIELD_FRAMES` (e.g. `450,800`) and `FIELD_OUT` are for tests.
+3. `video/skyfall/field/finish.js` renders the signal plot (`video/manim/signal.py`, ManimGX) on black and on white,
+   takes its transparency from the difference, lays it over the frames and fades out. The plot keeps the film's place
+   and clock and adds a detection level: each time the signal rises through it, a ring flashes, a tick stays on the
+   time axis, and the count goes up.
 
 ## Not done yet
 
