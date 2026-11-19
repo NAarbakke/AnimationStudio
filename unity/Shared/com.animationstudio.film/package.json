@@ -1,0 +1,12 @@
+{
+  "name": "com.animationstudio.film",
+  "version": "1.0.0",
+  "displayName": "AnimationStudio Film Kit",
+  "unity": "6000.3",
+  "description": "Shared pieces of the AnimationStudio Unity films: a film-time director base, three.js-to-Unity frame helpers, deterministic particle layers, sky and EO/IR shaders, the scene-building kit and the Film > Record menu.",
+  "dependencies": {
+    "com.unity.render-pipelines.universal": "17.3.0",
+    "com.unity.recorder": "5.1.8",
+    "com.unity.ugui": "2.0.0"
+  }
+}

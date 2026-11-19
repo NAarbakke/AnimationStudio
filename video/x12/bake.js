@@ -1,7 +1,7 @@
 // Bakes the X-12 film (site/src/x12/main.js) for Blender: the choreography stays in the film, Blender only renders it.
 //   node video/x12/bake.js [--force]   -> video/out/x12-work/bake/{scene.json, frames.bin, terrain.bin, boat.glb}
 // The film is posed frame by frame without drawing (window.__bake.pose) and read back in three.js's frame (Y up);
-// blender/x12_film.py turns that into Blender's (Z up). Per frame (float32, scene.frameFloats long, layout in scene.layout):
+// blender/x12/x12_film.py turns that into Blender's (Z up). Per frame (float32, scene.frameFloats long, layout in scene.layout):
 //   camera matrixWorld (16), vertical fov (deg), shot index, EO/IR shot
 //   boat matrix (16), speed, bow vertical speed
 //   rig angles: nav radar, gimbal pan, gimbal tilt, port train, port elevation, starboard train, starboard elevation

@@ -1,7 +1,7 @@
 // Bakes the Razorbill drop film (site/src/drone/main.js) for Blender: the choreography stays in the film, Blender only renders it.
 //   node video/skyfall/field/bake.js [--force]   -> video/out/skyfall-work/blender/{scene.json, plants.bin, frames.bin, skin.png}
 // The film is posed frame by frame without drawing (window.__bake.pose) and read back in three.js's frame (Y up);
-// blender/skyfall_field.py turns that into Blender's (Z up). Per frame, in this order (float32, FRAME_FLOATS long):
+// blender/razorbill/skyfall_field.py turns that into Blender's (Z up). Per frame, in this order (float32, FRAME_FLOATS long):
 //   camera matrixWorld (16), vertical fov in degrees, near
 //   world matrix of every moving mesh in scene.json "meshes" (16 each): the drone's parts, the rotor discs, the rod's parts
 //   rotor disc angles (4)

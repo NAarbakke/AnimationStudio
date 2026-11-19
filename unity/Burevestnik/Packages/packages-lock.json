@@ -1,5 +1,15 @@
 {
   "dependencies": {
+    "com.animationstudio.film": {
+      "version": "file:../../Shared/com.animationstudio.film",
+      "depth": 0,
+      "source": "local",
+      "dependencies": {
+        "com.unity.render-pipelines.universal": "17.3.0",
+        "com.unity.recorder": "5.1.8",
+        "com.unity.ugui": "2.0.0"
+      }
+    },
     "com.unity.ai.navigation": {
       "version": "2.0.16",
       "depth": 0,

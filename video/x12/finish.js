@@ -3,7 +3,7 @@
 //   node video/x12/finish.js            -> video/out/x12-autonomous.mp4 (two-pass, ≤ 100 MB) and x12-autonomous-master.mp4
 //   node video/x12/finish.js --reuse    keep overlay frames already captured
 //   node video/x12/finish.js --overlay-only   just capture the overlay frames
-// Frames come from blender/x12_film.py (video/out/x12-work/frames/NNNN.png, 24 fps); the overlay is captured here from
+// Frames come from blender/x12/x12_film.py (video/out/x12-work/frames/NNNN.png, 24 fps); the overlay is captured here from
 // x12.html?film&overlay on a transparent page, frame for frame, so its leader lines meet the parts Blender drew.
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';

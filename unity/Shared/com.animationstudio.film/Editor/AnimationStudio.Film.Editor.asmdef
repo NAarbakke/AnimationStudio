@@ -1,0 +1,15 @@
+{
+  "name": "AnimationStudio.Film.Editor",
+  "rootNamespace": "AnimationStudio.Film.Editor",
+  "references": [
+    "AnimationStudio.Film",
+    "Unity.Recorder.Editor",
+    "Unity.Recorder.Base",
+    "Unity.Recorder",
+    "UnityEngine.UI",
+    "Unity.RenderPipelines.Universal.Runtime",
+    "Unity.RenderPipelines.Core.Runtime"
+  ],
+  "includePlatforms": ["Editor"],
+  "autoReferenced": true
+}

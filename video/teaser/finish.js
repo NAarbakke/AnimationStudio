@@ -1,5 +1,5 @@
 // Finishes either Razorbill teaser: the same titles, soundtrack and grade over the film.
-//   node video/teaser/finish.js shoot    Blender frames (blender/razorbill_teaser.py) -> video/out/razorbill-teaser-shoot.mp4
+//   node video/teaser/finish.js shoot    Blender frames (blender/razorbill/razorbill_teaser.py) -> video/out/razorbill-teaser-shoot.mp4
 //   node video/teaser/finish.js figure   the Anatomy illustration (video/teaser/figure/) -> video/out/razorbill-teaser-figure.mp4
 // Add --reuse to keep the last base render and redo only the grade, titles and audio.
 import { spawnSync } from 'node:child_process';

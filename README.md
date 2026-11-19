@@ -41,12 +41,15 @@ site/                the website (Vite root): everything here ends up in dist/
                      x12-autonomous.glb from SystemsAnalysisTool's goldfish-x12/build.py -- --autonomous);
                      committed, so a fresh checkout runs without the CAD venv or Blender
   public/videos/     the maths page's films, put there by `npm run insert` (git-ignored)
-blender/
-  razorbill.py       SolidWorks GLB → flat, named-part GLB for the drone film (site/public/models/razorbill.glb)
-  vegetation.py      trees and maize for the drone film, source of site/public/models/vegetation.glb
-  burevestnik.py     missile exterior, launch site and rocks for the ConOps film, source of site/public/models/burevestnik.glb
-  kit.py             mesh builder, AO bake and GLB export shared by the two above
-  run.js             runs a script from this folder in headless Blender (5.1 or newer)
+blender/               one folder per film; run.js and kit.py are shared
+  burevestnik/burevestnik.py      missile exterior, launch site and rocks for the ConOps film, source of site/public/models/burevestnik.glb
+  razorbill/razorbill.py          SolidWorks GLB → flat, named-part GLB for the drone film (site/public/models/razorbill.glb)
+  razorbill/vegetation.py         trees and maize for the drone film, source of site/public/models/vegetation.glb
+  razorbill/razorbill_teaser.py   the Razorbill launch teaser, rendered in Cycles
+  razorbill/skyfall_field.py      the Operation SKYFALL field scene, rendered in Cycles
+  x12/x12_film.py                 the X-12 Autonomous film, rendered in Cycles
+  kit.py             mesh builder, AO bake and GLB export shared by burevestnik.py and vegetation.py
+  run.js             runs a script from this folder in headless Blender (5.1 or newer): npm run blender -- <film>/<script>.py
 cad/
   srm.py             default solid motor (build123d), the source of site/public/models/srm.glb
   requirements.txt   pinned Python packages for cad/.venv
@@ -135,7 +138,7 @@ that everything runs offline. The fonts (IBM Plex Mono, Saira Condensed) are in 
 | `dev` / `build` / `preview` | Vite dev server, production build to `dist/`, serve the build |
 | `cad` / `cad:watch` | Export `cad/srm.py` to `site/public/models/` once / on every save |
 | `cad:drone` | Convert the Razorbill GLB to `site/public/models/razorbill.glb` (needs Blender) |
-| `blender -- vegetation.py` | Rebuild `site/public/models/vegetation.glb` in headless Blender (`BLENDER` overrides the path to `blender.exe`) |
+| `blender -- razorbill/vegetation.py` | Rebuild `site/public/models/vegetation.glb` in headless Blender (`BLENDER` overrides the path to `blender.exe`) |
 | `render -- <page> [opts]` | Render any page to MP4 (see below) |
 | `stills -- <page> <t>…` | PNG frames from a film-mode page at the given seconds, to `video/out/stills/` |
 | `video` | Solid-motor film through HyperFrames → `video/out/srm-hyperframes.mp4` |
@@ -155,7 +158,7 @@ that everything runs offline. The fonts (IBM Plex Mono, Saira Condensed) are in 
 | Work on a page | `npm run dev`, open http://localhost:5173 |
 | Change a lab, keep the maths page in step | edit the lab, then `npm run insert` and `npm run build` |
 | Change the solid motor's CAD | `npm run cad:watch`, pick **CAD** on the Solid motor page |
-| Replace the drone model | new GLB in `cad/imports/`, adjust `blender/razorbill.py`, `npm run cad:drone` |
+| Replace the drone model | new GLB in `cad/imports/`, adjust `blender/razorbill/razorbill.py`, `npm run cad:drone` |
 | Hand over the site | `npm run insert && npm run build`, copy `dist/` to any static file server (opening the files directly does not work) |
 | Make and share a film | its `video:*` script (or `render`), then `npm run video:web`, share from `video/out/web/` |
 | Check a few frames of a film | `npm run stills -- "<page>?film" <seconds>…` |
@@ -235,8 +238,8 @@ surveyed site. See [visual reference notes](reference/conops-visual-references.m
 The [project PDF tools](tools/pdf/README.md) extract text and render reference
 pages using a persistent environment in `tools/pdf/.venv/`.
 
-The exterior, launch site and rocks come from `blender/burevestnik.py`: procedural meshes with ambient occlusion baked in
-Cycles. Run `npm run blender -- burevestnik.py` after changing it. The shell keeps the film's outer dimensions and its colour comes from
+The exterior, launch site and rocks come from `blender/burevestnik/burevestnik.py`: procedural meshes with ambient occlusion baked in
+Cycles. Run `npm run blender -- burevestnik/burevestnik.py` after changing it. The shell keeps the film's outer dimensions and its colour comes from
 the materials in `site/src/conops/main.js`; the vertices only carry AO, seams and weathering. The launcher, shelter, containers and
 other site furniture are invented scene dressing. The cutaway internals are still built in `main.js`.
 
@@ -261,7 +264,7 @@ to wherever they are shared.
 
 ### Razorbill drop
 
-`blender/razorbill.py` imports the SolidWorks GLB `cad/imports/2000_Razorbill_farm_drone.glb`, flattens its assembly
+`blender/razorbill/razorbill.py` imports the SolidWorks GLB `cad/imports/2000_Razorbill_farm_drone.glb`, flattens its assembly
 into one frame and renames the parts by their SolidWorks part numbers (`hub`, `battery`, `arm_N`, `leg_N`, `motor_N`,
 `prop_N`, `release_*`, `rod_*`). The film colours parts by those names and spins `prop_N` about `motor_N`. For the drop
 it turns `release_hook` and `release_horn` together, shifts `release_lever` between them, and flies the `rod_*` parts
@@ -280,8 +283,8 @@ the fall and a cut to the strike. The crop fades back in a lane toward the camer
 rod. The plot is computed from their positions against the spiral strip `rod_tape` (12.5 mm wide, 60 mm pitch), so each
 spike lines up with a crossing; its shape and height are illustrative, not sensor data.
 
-The trees and maize come from `blender/vegetation.py`: seeded procedural meshes with ambient occlusion baked in Cycles
-and all colour in the vertices. Run `npm run blender -- vegetation.py` after changing it; the film instances the nodes
+The trees and maize come from `blender/razorbill/vegetation.py`: seeded procedural meshes with ambient occlusion baked in Cycles
+and all colour in the vertices. Run `npm run blender -- razorbill/vegetation.py` after changing it; the film instances the nodes
 in `vegetation.glb`, using `crop_hero_N` round the rod's landing point and `crop_field_N` elsewhere, `tree_N` on the hedges and
 `tree_far_N` beyond them.
 
@@ -295,7 +298,7 @@ npm run video:teaser:figure    # video/out/razorbill-teaser-figure.mp4: an isome
 node video/teaser/finish.js shoot --reuse    # keep the base picture, redo only grade, titles and audio
 ```
 
-`blender/razorbill_teaser.py` writes every second frame to `video/out/teaser-frames/` and skips frames already there (82 minutes on the i7-10610U); `finish.js` interpolates each shot on its own to 24 fps. `video/teaser/figure/build.mjs` draws the plate from sizes measured on `razorbill.glb` (the shapes are drawn from those sizes, not traced) and `live.js` is its film clock. Anatomy is installed as a project skill in `.claude/skills/anatomy` (MIT, upstream commit `1482e84`); the figure imports its kit from there.
+`blender/razorbill/razorbill_teaser.py` writes every second frame to `video/out/teaser-frames/` and skips frames already there (82 minutes on the i7-10610U); `finish.js` interpolates each shot on its own to 24 fps. `video/teaser/figure/build.mjs` draws the plate from sizes measured on `razorbill.glb` (the shapes are drawn from those sizes, not traced) and `live.js` is its film clock. Anatomy is installed as a project skill in `.claude/skills/anatomy` (MIT, upstream commit `1482e84`); the figure imports its kit from there.
 
 ### Operation SKYFALL programme film
 
@@ -330,7 +333,7 @@ npm run video:skyfall          # then uses it (pass --three for the browser film
 1. `video/skyfall/field/bake.js` steps the film without drawing it and writes out, per frame, the camera, every moving part,
    the larvae meshes, clods, dust and the shader inputs, plus the 313 000 plants once (`video/out/skyfall-work/blender/`).
    It skips itself when current; `--force` after editing the film.
-2. `blender/skyfall_field.py` rebuilds the scene from that: the GLB models, the ground and sky shaders ported to nodes,
+2. `blender/razorbill/skyfall_field.py` rebuilds the scene from that: the GLB models, the ground and sky shaders ported to nodes,
    crops and trees as instances that sway in the wind and downwash, and renders `frames/NNNN.png`. EEVEE at 8 samples is
    about 10–40 s a frame on this laptop (Quadro P520), so 4–8 hours for 1170 frames; it resumes where it stopped.
    `FIELD_ENGINE=cycles`, `FIELD_SAMPLES`, `FIELD_FRAMES` (e.g. `450,800`) and `FIELD_OUT` are for tests.

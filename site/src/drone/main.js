@@ -3,8 +3,8 @@
 // World units are metres: the drone flies roughly along +x, +y is up, crop rows run along x and repeat every 0.42 m in z.
 // The drop point is near the origin. Everything is a pure function of film time t, so any frame renders on its own
 // (drone.html?film for video/render.js, ?t=20 to preview from a given second; space pauses, arrows skip).
-// Model: blender/razorbill.py turns cad/imports/2000_Razorbill_farm_drone.glb into /models/razorbill.glb.
-// Trees and crops: blender/vegetation.py makes /models/vegetation.glb.
+// Model: blender/razorbill/razorbill.py turns cad/imports/2000_Razorbill_farm_drone.glb into /models/razorbill.glb.
+// Trees and crops: blender/razorbill/vegetation.py makes /models/vegetation.glb.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { createStage, lin, NOISE } from '../shared/stage';
@@ -289,7 +289,7 @@ ground.receiveShadow = true; scene.add(ground);
   scene.add(new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color: lin(0x45583a) })));
 }
 
-// ---------- crops: instanced maize in rows (blender/vegetation.py), swaying in the wind and the rotor downwash ----------
+// ---------- crops: instanced maize in rows (blender/razorbill/vegetation.py), swaying in the wind and the rotor downwash ----------
 const HERO_R = 12;                                 // detailed plants this close to the arrow, where the camera gets down in the furrow
 const CAM_DIR = V3(0.25, 0, -1).normalize();       // from the rod toward the camera in the macro shot, with the sun over its shoulder
 const IMPACT_CAM = { d: 1.9, y: 1.12 };           // where the strike shot starts
@@ -367,7 +367,7 @@ function addCrops(gltf) {
   addInstances(gltf, reveal, revealMat, true).forEach(mesh => { mesh.customDepthMaterial = revealDepth; mesh.renderOrder = 1; });
 }
 
-// ---------- trees along the hedges (blender/vegetation.py), a farmyard ----------
+// ---------- trees along the hedges (blender/razorbill/vegetation.py), a farmyard ----------
 function addTrees(gltf) {
   const r = rng(5), spots = [], batches = {};
   for (let x = FIELD.x0 - 30; x < FIELD.x1 + 30; x += 7 + r() * 9) spots.push([x, FIELD.z0 - 3.5 - r() * 3]);

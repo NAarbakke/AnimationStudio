@@ -2,7 +2,7 @@
 // nuclear cruise. Source: Hecla & Kemp (MIT), "Modeling the Performance of the Burevestnik", §3.1.1 and Fig. 4.
 // World units are metres: +x is the launch heading, +y up, +z to the vehicle's right. Everything is a pure function
 // of film time t, so any frame can be rendered on its own (conops.html?film for video/render.js, ?t=120 to preview).
-// Exterior, launch site and rocks: blender/burevestnik.py makes /models/burevestnik.glb. The cutaway internals are built here.
+// Exterior, launch site and rocks: blender/burevestnik/burevestnik.py makes /models/burevestnik.glb. The cutaway internals are built here.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { createStage, lin, NOISE } from '../shared/stage';
@@ -245,7 +245,7 @@ for (const mat of [MAT.skin, MAT.wing]) {
 
 // ---------- vehicle (Table 1: 9.51 m, 0.846 × 0.561 m section, 5.6 m span, 14.8° sweep) ----------
 const LEN = 9.51, HW = 0.423, HH = 0.2805, XT = -LEN / 2;
-// Exterior meshes come from blender/burevestnik.py; each is hung on its node once the GLB has loaded.
+// Exterior meshes come from blender/burevestnik/burevestnik.py; each is hung on its node once the GLB has loaded.
 const PARTS = [];
 const part = (name, material) => { const mesh = new THREE.Mesh(new THREE.BufferGeometry(), material); mesh.name = name; PARTS.push(mesh); return mesh; };
 const alongX = g => g.rotateZ(-Math.PI / 2); // three.js cylinders run along +y; ours run along +x
@@ -375,7 +375,7 @@ const flow = (() => {
 })();
 
 // ---------- launch site: canister on an inclined launcher, roll-back shelter, apron furniture ----------
-// Positions match the terrain's flat apron (y = 6); the meshes come from blender/burevestnik.py.
+// Positions match the terrain's flat apron (y = 6); the meshes come from blender/burevestnik/burevestnik.py.
 const site = new THREE.Group(); scene.add(site);
 const canister = new THREE.Group(); canister.position.copy(CANISTER); canister.rotation.z = LAUNCH_ELEV; site.add(canister);
 canister.add(part('canister', MAT.site));

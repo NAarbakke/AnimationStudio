@@ -2,15 +2,14 @@
 // any frame and the Recorder gets the same result. Mission time m (0 at kicker ignition) runs slower in the two
 // separation slow-motions. World: launch heads +Z, y up, metres. Staging follows site/src/conops/main.js; this is a
 // notional visual interpretation, not engineering data.
+using AnimationStudio.Film;
 using UnityEngine;
 using UnityEngine.UI;
 
 [ExecuteAlways]
-public class FlightDirector : MonoBehaviour
+public class FlightDirector : FilmDirector
 {
-    [Header("Playback")]
-    public float time;
-    public bool play = true;
+    public override string OutputName => "burevestnik-game";
 
     [Header("Vehicle rig (Body is rotated so the GLB's -X nose points along +Z)")]
     public Transform missile;
@@ -46,7 +45,7 @@ public class FlightDirector : MonoBehaviour
     const float DM = 1f / 120f, DT = 1f / 240f;
     [System.NonSerialized] Vector3[] pathPos; [System.NonSerialized] float[] pathV, pathBank, pathPsi, pathGam;
     [System.NonSerialized] float[] filmToMission; [System.NonSerialized] float filmEnd;
-    public float FilmEnd { get { Build(); return filmEnd; } }
+    public override float FilmEnd { get { Build(); return filmEnd; } }
     [System.NonSerialized] bool built;
 
     // ============================================================ terrain (shared with the scene builder)
@@ -192,15 +191,8 @@ public class FlightDirector : MonoBehaviour
     }
 
     // ============================================================ per frame
-    void Start() { if (Application.isPlaying) time = 0f; }
 
-    void Update()
-    {
-        if (Application.isPlaying && play) time += Time.deltaTime;
-        Evaluate(time);
-    }
-
-    public void Evaluate(float t)
+    public override void Evaluate(float t)
     {
         if (missile == null) return;
         Build();

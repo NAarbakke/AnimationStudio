@@ -9,7 +9,7 @@ long pale side pods, deeper tapered rear fairing, upper horizontal tail surfaces
 and downward vertical fin. Fine seams, fasteners and paint variation are visual
 interpretation; the paper does not resolve their exact construction. This is a
 rendering model, not manufacturing geometry. The launcher, shelter and other site furniture
-in `blender/burevestnik.py` are generic scene dressing, not based on imagery of
+in `blender/burevestnik/burevestnik.py` are generic scene dressing, not based on imagery of
 any real facility.
 
 The ventral intake is behind the wing at the forward shoulder of the aft

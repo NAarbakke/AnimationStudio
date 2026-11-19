@@ -1,6 +1,6 @@
 // Finishes the Blender field film for the programme: the rendered frames, the ManimGX signal plot over them, the fade out.
 //   node video/skyfall/field/finish.js     -> video/out/skyfall-work/field-blender.mp4 (39 s, 1080p, 30 fps)
-// Before it: node video/skyfall/field/bake.js, then npm run blender -- skyfall_field.py (hours; resumes where it stopped).
+// Before it: node video/skyfall/field/bake.js, then npm run blender -- razorbill/skyfall_field.py (hours; resumes where it stopped).
 // ManimGX only writes opaque video, so the plot is rendered on black and on white: where the two differ is how see-through
 // it is (white - black = 1 - alpha), and on black it is already its colour times alpha. Over the film: film x (1 - alpha) + black.
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -22,7 +22,7 @@ const FPS = scene.fps, DUR = scene.duration;
 
 const have = existsSync(frames) ? readdirSync(frames).filter(f => /^\d{4}\.png$/.test(f)).length : 0;
 if (have < scene.frames) {
-  console.error(`only ${have} of ${scene.frames} Blender frames in ${frames}: run npm run blender -- skyfall_field.py (it resumes)`);
+  console.error(`only ${have} of ${scene.frames} Blender frames in ${frames}: run npm run blender -- razorbill/skyfall_field.py (it resumes)`);
   process.exit(1);
 }
 
